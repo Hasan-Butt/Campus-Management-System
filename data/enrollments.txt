@@ -1,0 +1,2 @@
+# Enrollments data file
+# Format: ENROLLMENT|enrollmentId|studentId|sectionId|date|status

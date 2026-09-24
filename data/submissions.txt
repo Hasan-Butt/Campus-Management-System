@@ -1,0 +1,2 @@
+# Submissions data file
+# Format: SUBMISSION|submissionId|assignmentId|studentId|date|status|marks

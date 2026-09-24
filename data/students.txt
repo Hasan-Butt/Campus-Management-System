@@ -1,0 +1,2 @@
+# Students data file
+# Format: STUDENT|id|name|email|phone|studentId|role

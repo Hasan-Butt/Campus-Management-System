@@ -1,0 +1,2 @@
+# FYP Groups data file
+# Format: FYPGROUP|groupId|title|description|supervisorId

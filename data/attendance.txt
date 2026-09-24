@@ -1,0 +1,2 @@
+# Attendance data file
+# Format: ATTENDANCE|studentId|sectionId|date|status

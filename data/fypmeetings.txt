@@ -1,0 +1,2 @@
+# FYP Meetings data file
+# Format: FYPMEETING|meetingId|groupId|date|agenda

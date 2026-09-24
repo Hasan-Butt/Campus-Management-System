@@ -1,0 +1,2 @@
+# Assignments data file
+# Format: ASSIGNMENT|id|title|deadline|totalMarks|sectionId|taId

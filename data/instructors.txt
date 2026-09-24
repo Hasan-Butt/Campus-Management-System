@@ -1,0 +1,2 @@
+# Instructors data file
+# Format: INSTRUCTOR|id|name|email|phone|teacherId|role

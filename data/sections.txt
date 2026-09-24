@@ -1,0 +1,2 @@
+# Sections data file
+# Format: SECTION|sectionId|courseCode|capacity|day|startTime|endTime|room

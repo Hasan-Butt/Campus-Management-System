@@ -1,0 +1,3 @@
+# Data files — one record per line, pipe-delimited
+# Format: TYPE|field1|field2|...
+# Example: COURSE|CS101|Intro to SE|3
