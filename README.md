@@ -35,14 +35,7 @@ docs/               — Diagrams, notes
 ## Building & Running
 
 ### Compile (from project root)
-```bash
-javac -d out -sourcepath src $(find src -name "*.java")
-```
-
-### Run (replace with your main class when created)
-```bash
-java -cp out com.fast.campus.Main
-```
+Open File `Main.java` in src\com\fast\campus and click run next to the class name method and make sure you have JDK installed in your IDE to run this.
 
 ---
 
