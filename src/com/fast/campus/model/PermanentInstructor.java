@@ -20,12 +20,14 @@ public class PermanentInstructor extends Instructor {
     }
 
     @Override
-    public String getRole() { return "PermanentInstructor"; }
-
-    // --- FYP operations (Saim implements) ---
+    public String getRole() {
+        return "PermanentInstructor";
+    }
 
     public void assignTAAsStudent(NormalStudent student, Section section) {
-        // TODO: Saim — implement TA assignment logic
+        if (student != null && section != null) {
+            section.assignTA(student);
+        }
     }
 
     public List<FYPGroup> viewFYPGroup() {
@@ -33,18 +35,24 @@ public class PermanentInstructor extends Instructor {
     }
 
     public void scheduleFYPMeeting(FYPGroup group, FYPMeeting meeting) {
-        // TODO: Saim — implement meeting scheduling
+        if (group != null && meeting != null) {
+            group.addMeeting(meeting);
+        }
     }
 
     public void evaluateFYPIdea(FYPGroup group) {
-        // TODO: Saim — implement FYP idea evaluation
     }
 
     public void provideFYPFeedback(FYPGroup group, String feedback) {
-        // TODO: Saim — implement feedback provision
     }
 
-    // --- Getters ---
+    public void addSupervisedGroup(FYPGroup group) {
+        if (group != null && !supervisedGroups.contains(group)) {
+            supervisedGroups.add(group);
+        }
+    }
 
-    public List<FYPGroup> getSupervisedGroups() { return supervisedGroups; }
+    public List<FYPGroup> getSupervisedGroups() {
+        return supervisedGroups;
+    }
 }

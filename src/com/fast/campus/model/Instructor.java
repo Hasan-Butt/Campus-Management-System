@@ -4,10 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Abstract Instructor model stub.
+ * Abstract Instructor model.
  *
- * <p>Owner: Saim — This is a compilable stub so Hasan's Section can reference it.
- * Saim will expand this class with full business logic.</p>
+ * <p>Owner: Saim</p>
  */
 public abstract class Instructor extends Person {
 
@@ -21,32 +20,42 @@ public abstract class Instructor extends Person {
         this.assignedSections = new ArrayList<>();
     }
 
-    // --- Domain operations (to be implemented by Saim) ---
+    protected String teacherId;
+    protected List<Section> assignedSections;
 
-    public List<Section> viewCourses()  { return assignedSections; }
-    public List<Section> viewSection()  { return assignedSections; }
+    public List<Section> viewCourses() {
+        return assignedSections;
+    }
+
+    public List<Section> viewSection() {
+        return assignedSections;
+    }
 
     public void markAttendance(Student student, Section section) {
-        // TODO: Saim — implement attendance marking
     }
 
     public void updateAttendance(Student student, Section section) {
-        // TODO: Saim — implement attendance update
     }
 
     public double calculateAttendancePercentage(Student student, Section section) {
-        // TODO: Saim — implement attendance percentage
         return 0.0;
     }
 
-    public void viewStudents() {
-        // TODO: Saim — implement
+    public List<Student> viewStudents() {
+        List<Student> allStudents = new ArrayList<>();
+        for (Section section : assignedSections) {
+            allStudents.addAll(section.getEnrolledStudents());
+        }
+        return allStudents;
     }
 
-    // --- Getters ---
+    public String getTeacherId() {
+        return teacherId;
+    }
 
-    public String getTeacherId()                   { return teacherId; }
-    public List<Section> getAssignedSections()     { return assignedSections; }
+    public List<Section> getAssignedSections() {
+        return assignedSections;
+    }
 
     public void addSection(Section section) {
         assignedSections.add(section);
