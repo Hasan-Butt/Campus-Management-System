@@ -24,14 +24,24 @@ public class PermanentInstructor extends Instructor {
         return "PermanentInstructor";
     }
 
-    public void assignTAAsStudent(NormalStudent student, Section section) {
+    public void assignTA(NormalStudent student, Section section) {
         if (student != null && section != null) {
-            section.assignTA(student);
+            TeachingAssistant ta = new TeachingAssistant(student);
+            section.assignTA(ta);
         }
     }
 
-    public List<FYPGroup> viewFYPGroup() {
+    public List<FYPGroup> viewFYPGroups() {
         return supervisedGroups;
+    }
+
+    public FYPGroup viewFYPGroupDetails(String groupId) {
+        for (FYPGroup group : supervisedGroups) {
+            if (group.getGroupId().equals(groupId)) {
+                return group;
+            }
+        }
+        return null;
     }
 
     public void scheduleFYPMeeting(FYPGroup group, FYPMeeting meeting) {
@@ -40,10 +50,18 @@ public class PermanentInstructor extends Instructor {
         }
     }
 
-    public void evaluateFYPIdea(FYPGroup group) {
+    public void evaluateFYPIdea(FYPGroup group, FYPEvaluation evaluation) {
+        if (group != null && evaluation != null) {
+            group.addEvaluation(evaluation);
+        }
     }
 
     public void provideFYPFeedback(FYPGroup group, String feedback) {
+        if (group != null && feedback != null) {
+            FYPEvaluation evaluation = new FYPEvaluation("EVAL_" + System.currentTimeMillis());
+            evaluation.addFeedback(feedback);
+            group.addEvaluation(evaluation);
+        }
     }
 
     public void addSupervisedGroup(FYPGroup group) {
