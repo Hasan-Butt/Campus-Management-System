@@ -2,6 +2,7 @@ package com.fast.campus.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Abstract Instructor model.
@@ -20,33 +21,32 @@ public abstract class Instructor extends Person {
         this.assignedSections = new ArrayList<>();
     }
 
-    protected String teacherId;
-    protected List<Section> assignedSections;
+    public List<Course> viewCourses() {
+        return assignedSections.stream()
+                .map(Section::getCourse)
+                .distinct()
+                .collect(Collectors.toList());
+    }
 
-    public List<Section> viewCourses() {
+    public List<Section> viewSections() {
         return assignedSections;
     }
 
-    public List<Section> viewSection() {
-        return assignedSections;
+    public List<Student> viewEnrolledStudents(Section section) {
+        if (section == null) {
+            return new ArrayList<>();
+        }
+        return section.getEnrolledStudents();
     }
 
-    public void markAttendance(Student student, Section section) {
+    public void markAttendance(Attendance attendance, Student student, Section section) {
     }
 
-    public void updateAttendance(Student student, Section section) {
+    public void updateAttendance(Attendance attendance, Student student, Section section) {
     }
 
     public double calculateAttendancePercentage(Student student, Section section) {
         return 0.0;
-    }
-
-    public List<Student> viewStudents() {
-        List<Student> allStudents = new ArrayList<>();
-        for (Section section : assignedSections) {
-            allStudents.addAll(section.getEnrolledStudents());
-        }
-        return allStudents;
     }
 
     public String getTeacherId() {
@@ -58,6 +58,8 @@ public abstract class Instructor extends Person {
     }
 
     public void addSection(Section section) {
-        assignedSections.add(section);
+        if (section != null && !assignedSections.contains(section)) {
+            assignedSections.add(section);
+        }
     }
 }
