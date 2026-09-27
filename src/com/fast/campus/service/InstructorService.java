@@ -457,8 +457,7 @@ public class InstructorService {
                     + section.getTeachingAssistant().getName());
         }
         
-        // Delegate to the instructor's method for role conversion/tracking
-        instructor.assignTAAsStudent(student, section);
+        instructor.assignTA(student, section);
         
         // Assign the TA to the section
         section.assignTA(student);
