@@ -17,6 +17,11 @@ public class TeachingAssistant extends Student {
         super(id, name, email, phoneNumber, studentId);
     }
 
+    public TeachingAssistant(NormalStudent student) {
+        super(student.getId(), student.getName(), student.getEmail(),
+              student.getPhoneNumber(), student.getStudentId());
+    }
+
     @Override
     public String getRole() { return "TeachingAssistant"; }
 
