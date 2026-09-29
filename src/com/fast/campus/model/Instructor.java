@@ -1,5 +1,7 @@
 package com.fast.campus.model;
 
+import com.fast.campus.enums.AttendanceStatus;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,10 +41,10 @@ public abstract class Instructor extends Person {
         return section.getEnrolledStudents();
     }
 
-    public void markAttendance(Attendance attendance, Student student, Section section) {
+    public void markAttendance(Attendance attendance, AttendanceStatus status) {
     }
 
-    public void updateAttendance(Attendance attendance, Student student, Section section) {
+    public void updateAttendance(Attendance attendance, AttendanceStatus status) {
     }
 
     public double calculateAttendancePercentage(Student student, Section section) {

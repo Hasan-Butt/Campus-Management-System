@@ -264,6 +264,9 @@ public class InstructorService {
         Attendance attendance = new Attendance(student, section, date, status);
         attendanceRecords.add(attendance);
 
+        // Delegate to the instructor model
+        instructor.markAttendance(attendance, status);
+
         // Persist to file
         String record = String.format("ATTENDANCE|%s|%s|%s|%s",
                 student.getStudentId(),
@@ -315,6 +318,9 @@ public class InstructorService {
         
         AttendanceStatus oldStatus = attendance.getStatus();
         attendance.setStatus(newStatus);
+        
+        // Delegate to the instructor model
+        instructor.updateAttendance(attendance, newStatus);
         
         // Update file - rewrite all attendance records with the update
         List<String> updatedLines = new ArrayList<>();
