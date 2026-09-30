@@ -20,31 +20,57 @@ public class PermanentInstructor extends Instructor {
     }
 
     @Override
-    public String getRole() { return "PermanentInstructor"; }
-
-    // --- FYP operations (Saim implements) ---
-
-    public void assignTAAsStudent(NormalStudent student, Section section) {
-        // TODO: Saim — implement TA assignment logic
+    public String getRole() {
+        return "PermanentInstructor";
     }
 
-    public List<FYPGroup> viewFYPGroup() {
+    public void assignTA(NormalStudent student, Section section) {
+        if (student != null && section != null) {
+            TeachingAssistant ta = new TeachingAssistant(student);
+            section.assignTA(ta);
+        }
+    }
+
+    public List<FYPGroup> viewFYPGroups() {
         return supervisedGroups;
     }
 
-    public void scheduleFYPMeeting(FYPGroup group, FYPMeeting meeting) {
-        // TODO: Saim — implement meeting scheduling
+    public FYPGroup viewFYPGroupDetails(String groupId) {
+        for (FYPGroup group : supervisedGroups) {
+            if (group.getGroupId().equals(groupId)) {
+                return group;
+            }
+        }
+        return null;
     }
 
-    public void evaluateFYPIdea(FYPGroup group) {
-        // TODO: Saim — implement FYP idea evaluation
+    public void scheduleFYPMeeting(FYPGroup group, FYPMeeting meeting) {
+        if (group != null && meeting != null) {
+            group.addMeeting(meeting);
+        }
+    }
+
+    public void evaluateFYPIdea(FYPGroup group, FYPEvaluation evaluation) {
+        if (group != null && evaluation != null) {
+            group.addEvaluation(evaluation);
+        }
     }
 
     public void provideFYPFeedback(FYPGroup group, String feedback) {
-        // TODO: Saim — implement feedback provision
+        if (group != null && feedback != null) {
+            FYPEvaluation evaluation = new FYPEvaluation("EVAL_" + System.currentTimeMillis());
+            evaluation.addFeedback(feedback);
+            group.addEvaluation(evaluation);
+        }
     }
 
-    // --- Getters ---
+    public void addSupervisedGroup(FYPGroup group) {
+        if (group != null && !supervisedGroups.contains(group)) {
+            supervisedGroups.add(group);
+        }
+    }
 
-    public List<FYPGroup> getSupervisedGroups() { return supervisedGroups; }
+    public List<FYPGroup> getSupervisedGroups() {
+        return supervisedGroups;
+    }
 }

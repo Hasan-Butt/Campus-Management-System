@@ -8,4 +8,8 @@ public class UnauthorizedActionException extends UserException {
     public UnauthorizedActionException(String actorName, String action) {
         super("Actor '" + actorName + "' is not authorized to perform: " + action);
     }
+
+    public UnauthorizedActionException(String message) {
+        super(message);
+    }
 }

@@ -1,13 +1,15 @@
 package com.fast.campus.model;
 
+import com.fast.campus.enums.AttendanceStatus;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Abstract Instructor model stub.
+ * Abstract Instructor model.
  *
- * <p>Owner: Saim — This is a compilable stub so Hasan's Section can reference it.
- * Saim will expand this class with full business logic.</p>
+ * <p>Owner: Saim</p>
  */
 public abstract class Instructor extends Person {
 
@@ -21,34 +23,45 @@ public abstract class Instructor extends Person {
         this.assignedSections = new ArrayList<>();
     }
 
-    // --- Domain operations (to be implemented by Saim) ---
-
-    public List<Section> viewCourses()  { return assignedSections; }
-    public List<Section> viewSection()  { return assignedSections; }
-
-    public void markAttendance(Student student, Section section) {
-        // TODO: Saim — implement attendance marking
+    public List<Course> viewCourses() {
+        return assignedSections.stream()
+                .map(Section::getCourse)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
-    public void updateAttendance(Student student, Section section) {
-        // TODO: Saim — implement attendance update
+    public List<Section> viewSections() {
+        return assignedSections;
+    }
+
+    public List<Student> viewEnrolledStudents(Section section) {
+        if (section == null) {
+            return new ArrayList<>();
+        }
+        return section.getEnrolledStudents();
+    }
+
+    public void markAttendance(Attendance attendance, AttendanceStatus status) {
+    }
+
+    public void updateAttendance(Attendance attendance, AttendanceStatus status) {
     }
 
     public double calculateAttendancePercentage(Student student, Section section) {
-        // TODO: Saim — implement attendance percentage
         return 0.0;
     }
 
-    public void viewStudents() {
-        // TODO: Saim — implement
+    public String getTeacherId() {
+        return teacherId;
     }
 
-    // --- Getters ---
-
-    public String getTeacherId()                   { return teacherId; }
-    public List<Section> getAssignedSections()     { return assignedSections; }
+    public List<Section> getAssignedSections() {
+        return assignedSections;
+    }
 
     public void addSection(Section section) {
-        assignedSections.add(section);
+        if (section != null && !assignedSections.contains(section)) {
+            assignedSections.add(section);
+        }
     }
 }
