@@ -1,2 +1,2 @@
-# Sections data file
-# Format: SECTION|sectionId|courseCode|capacity|day|startTime|endTime|room
+SECTION|CS101-A|CS101|50|MONDAY|08:00|09:30|Room-301|INST-001
+SECTION|CS201-A|CS201|45|WEDNESDAY|10:00|11:30|Room-202|NONE

@@ -17,6 +17,13 @@ public class Schedule {
 
     public Schedule(Day day, String startTime, String endTime, String room) {
         this.day = day;
+        this.startTime = LocalTime.parse(startTime);
+        this.endTime = LocalTime.parse(endTime);
+        this.room = room;
+    }
+
+    public Schedule(Day day, LocalTime startTime, LocalTime endTime, String room) {
+        this.day = day;
         this.startTime = startTime;
         this.endTime = endTime;
         this.room = room;
@@ -47,10 +54,10 @@ public class Schedule {
 
     // --- Setters ---
 
-    public void setRoom(String room)           { this.room = room; }
-    public void setDay(Day day)                { this.day = day; }
-    public void setStartTime(String startTime) { this.startTime = startTime; }
-    public void setEndTime(String endTime)     { this.endTime = endTime; }
+    public void setRoom(String room)               { this.room = room; }
+    public void setDay(Day day)                    { this.day = day; }
+    public void setStartTime(LocalTime startTime)  { this.startTime = startTime; }
+    public void setEndTime(LocalTime endTime)      { this.endTime = endTime; }
 
     @Override
     public String toString() {
