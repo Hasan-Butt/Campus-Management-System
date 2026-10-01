@@ -46,7 +46,7 @@ public class AcademicOfficeAdmin extends Administrator {
         else{
             System.out.println("Course not found");
         }
-        
+        return null;
     }
 
     public void createSection(Section section){
