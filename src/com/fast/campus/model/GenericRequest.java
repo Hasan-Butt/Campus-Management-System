@@ -21,6 +21,6 @@ public class GenericRequest extends Request {
 
     @Override
     public String getDetails() {
-        return "GenericRequest[" + requestId + " | " + category + "] — " + description;
+        return "GenericRequest[" + getRequestId() + " | " + category + "] — " + getDescription();
     }
 }

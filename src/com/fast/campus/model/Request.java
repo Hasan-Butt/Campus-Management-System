@@ -10,11 +10,11 @@ import java.time.LocalDate;
  */
 public abstract class Request {
 
-    protected String requestId;
-    protected LocalDate requestDate;
-    protected String description;
-    protected RequestStatus status;
-    protected int priority;
+    private String requestId;
+    private LocalDate requestDate;
+    private String description;
+    private RequestStatus status;
+    private int priority;
 
     public Request(String requestId, String description, int priority) {
         this.requestId = requestId;

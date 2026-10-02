@@ -24,7 +24,7 @@ public class CourseClashRequest extends Request {
 
     @Override
     public String getDetails() {
-        return "CourseClashRequest[" + requestId + "] — " + getConflictDetails();
+        return "CourseClashRequest[" + getRequestId() + "] — " + getConflictDetails();
     }
 
     // --- Getters ---
