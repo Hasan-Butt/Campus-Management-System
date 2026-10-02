@@ -15,10 +15,7 @@ public class Feedback {
     private LocalDate date;
 
     public Feedback(String feedbackId, String evaluator, String comments) {
-        this.feedbackId = feedbackId;
-        this.evaluator = evaluator;
-        this.comments = comments;
-        this.date = LocalDate.now();
+        this(feedbackId, evaluator, comments, LocalDate.now());
     }
 
     public Feedback(String feedbackId, String evaluator, String comments, LocalDate date) {
