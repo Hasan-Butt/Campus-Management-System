@@ -1,6 +1,7 @@
 package com.fast.campus.model;
 import java.util.List;
 import com.fast.campus.enums.RequestStatus;
+import com.fast.campus.service.AcademicOfficeService;
 
 /**
  * Concrete administrator responsible for managing courses, sections,
@@ -40,13 +41,8 @@ public class AcademicOfficeAdmin extends Administrator {
     }
 
     public Course searchCourse(String courseCode){
-        if (courseCode != null) {
-            System.out.println("Course found successfully");
-        }
-        else{
-            System.out.println("Course not found");
-        }
-        return null;
+        AcademicOfficeService academicOfficeService = new AcademicOfficeService();
+        return academicOfficeService.searchCourse(courseCode);
     }
 
     public void createSection(Section section){
