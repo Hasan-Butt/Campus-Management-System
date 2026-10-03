@@ -53,4 +53,5 @@ public class Course {
     public String toString() {
         return "Course[" + courseCode + " | " + title + " | " + creditHours + " cr]";
     }
+    
 }
