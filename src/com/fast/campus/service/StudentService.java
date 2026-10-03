@@ -1,10 +1,16 @@
 package com.fast.campus.service;
 
 import com.fast.campus.comparator.AssignmentDeadlineComparator;
+import com.fast.campus.comparator.RequestDateComparator;
+import com.fast.campus.comparator.RequestPriorityComparator;
+import com.fast.campus.enums.AttendanceStatus;
+import com.fast.campus.enums.RequestCategory;
+import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.enums.SubmissionStatus;
 import com.fast.campus.exception.AssessmentException;
 import com.fast.campus.exception.CampusException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidRequestException;
 import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.exception.UserException;
 import com.fast.campus.model.*;
@@ -36,6 +42,7 @@ public class StudentService {
     private static final String ASSIGNMENTS_FILE = "data/assignments.txt";
     private static final String SUBMISSIONS_FILE = "data/submissions.txt";
     private static final String REQUESTS_FILE    = "data/requests.txt";
+    private static final String ATTENDANCE_FILE  = "data/attendance.txt"; // written by InstructorService; read-only here
 
     private static final String STUDENTS_HEADER =
             "# Format: STUDENT|id|name|email|phone|studentId|role|assignedSectionId";
@@ -46,6 +53,9 @@ public class StudentService {
     private static final String SUBMISSIONS_HEADER =
             "# Format: SUBMISSION|submissionId|assignmentId|studentId|date|status|marks"
             + "|feedbackId|evaluator|feedbackDate|comments|content";
+    private static final String REQUESTS_HEADER =
+            "# Format: REQUEST|requestId|type|studentId|date|status|priority|detail1|detail2|description"
+            + "  (CLASH: detail1=conflictingSectionId, detail2=requestedSectionId; GENERIC: detail1=category)";
 
     private final AcademicOfficeService academicService; // source of the loaded sections
     private final List<Student> students = new ArrayList<>();
@@ -61,6 +71,7 @@ public class StudentService {
         loadEnrollments();
         loadAssignments();   // needs students (TA) and sections
         loadSubmissions();   // needs assignments and students
+        loadRequests();      // needs students and sections
     }
 
     // ================================================================
@@ -434,16 +445,163 @@ public class StudentService {
     }
 
     // ================================================================
-    // TODO (next parts): requests, attendance
+    // REQUESTS
     // ================================================================
 
-    public void viewAttendance(Student student, Section section) {
-        // TODO: Kabeer — list attendance records
+    public CourseClashRequest submitCourseClashRequest(Student student, Section currentSection,
+                                                       Section wantedSection, String description, int priority)
+            throws InvalidRequestException {
+        CourseClashRequest request = new CourseClashRequest("R-" + System.currentTimeMillis(),
+                description, priority, currentSection, wantedSection);
+        try {
+            student.submitCourseClashRequest(request);
+        } catch (InvalidRequestException e) {
+            Logger.error("Student", student.getStudentId() + " clash request rejected: " + e.getMessage());
+            throw e;
+        }
+        saveRequests();
+        Logger.info("Student", student.getStudentId() + " submitted course clash request "
+                + request.getRequestId() + " (" + request.getConflictDetails() + ")");
+        return request;
     }
 
-    public void submitCourseClashRequest(CourseClashRequest request) {
-        request.submit();
-        Logger.info("Student", "Course clash request submitted: " + request.getRequestId());
-        // TODO: Kabeer — persist to REQUESTS_FILE
+    public GenericRequest submitGenericRequest(Student student, RequestCategory category,
+                                               String description, int priority)
+            throws InvalidRequestException {
+        GenericRequest request = new GenericRequest("R-" + System.currentTimeMillis(),
+                description, priority, category);
+        try {
+            student.submitGenericRequest(request);
+        } catch (InvalidRequestException e) {
+            Logger.error("Student", student.getStudentId() + " request rejected: " + e.getMessage());
+            throw e;
+        }
+        saveRequests();
+        Logger.info("Student", student.getStudentId() + " submitted " + category + " request " + request.getRequestId());
+        return request;
+    }
+
+    public List<Request> viewRequests(Student student) {
+        List<Request> list = new ArrayList<>(student.viewRequests());
+        list.sort(new RequestDateComparator()); // oldest first
+        Logger.info("Student", student.getStudentId() + " viewed " + list.size() + " request(s)");
+        return list;
+    }
+
+    /** Every student's requests, highest priority first — for the Academic Office Admin. */
+    public List<Request> getAllRequests() {
+        List<Request> all = new ArrayList<>();
+        for (Student s : students) {
+            all.addAll(s.viewRequests());
+        }
+        all.sort(new RequestPriorityComparator());
+        return all;
+    }
+
+    /**
+     * Writes all requests to data/requests.txt. Call this after the admin approves or
+     * rejects a request (AcademicOfficeService only changes the status in memory).
+     */
+    public void saveRequests() {
+        List<String> lines = new ArrayList<>();
+        lines.add(REQUESTS_HEADER);
+        for (Student s : students) {
+            for (Request r : s.viewRequests()) {
+                String type, detail1, detail2;
+                if (r instanceof CourseClashRequest) {
+                    CourseClashRequest c = (CourseClashRequest) r;
+                    type = "CLASH";
+                    detail1 = c.getConflictingSection().getSectionId();
+                    detail2 = c.getRequestedSection().getSectionId();
+                } else {
+                    type = "GENERIC";
+                    detail1 = ((GenericRequest) r).getCategory().name();
+                    detail2 = "NONE";
+                }
+                lines.add(String.join("|", "REQUEST", r.getRequestId(), type, s.getStudentId(),
+                        r.getRequestDate().toString(), r.getStatus().name(), String.valueOf(r.getPriority()),
+                        detail1, detail2, clean(r.getDescription())));
+            }
+        }
+        FileManager.writeAllLines(REQUESTS_FILE, lines);
+    }
+
+    private void loadRequests() {
+        int loaded = 0;
+        for (String line : FileManager.readLines(REQUESTS_FILE)) {
+            String[] p = line.split("\\|", -1);
+            if (p.length < 10 || !p[0].equals("REQUEST")) {
+                continue;
+            }
+            Student student = findStudent(p[3]);
+            if (student == null) {
+                Logger.warn("StudentService", "Skipping request of unknown student: " + line);
+                continue;
+            }
+            try {
+                LocalDate date = LocalDate.parse(p[4]);
+                RequestStatus status = RequestStatus.valueOf(p[5]);
+                int priority = Integer.parseInt(p[6]);
+                Request request;
+                if (p[2].equals("CLASH")) {
+                    Section current = findSection(p[7]);
+                    Section wanted = findSection(p[8]);
+                    if (current == null || wanted == null) {
+                        Logger.warn("StudentService", "Skipping request with unknown section: " + line);
+                        continue;
+                    }
+                    request = new CourseClashRequest(p[1], p[9], priority, current, wanted, date, status);
+                } else {
+                    request = new GenericRequest(p[1], p[9], priority, RequestCategory.valueOf(p[7]), date, status);
+                }
+                // Restored as-is (no re-validation): it was already checked when first submitted
+                student.viewRequests().add(request);
+                loaded++;
+            } catch (RuntimeException e) {
+                Logger.error("StudentService", "Invalid request record: " + line);
+            }
+        }
+        Logger.info("StudentService", "Loaded " + loaded + " request(s) from file");
+    }
+
+    // ================================================================
+    // ATTENDANCE (student view — records are marked by instructors)
+    // ================================================================
+
+    public List<Attendance> viewAttendance(Student student, Section section) {
+        List<Attendance> records = new ArrayList<>();
+        for (String line : FileManager.readLines(ATTENDANCE_FILE)) {
+            String[] p = line.split("\\|", -1);
+            if (p.length >= 5 && p[0].equals("ATTENDANCE")
+                    && p[1].equals(student.getStudentId()) && p[2].equals(section.getSectionId())) {
+                try {
+                    records.add(new Attendance(student, section, LocalDate.parse(p[3]),
+                            AttendanceStatus.valueOf(p[4])));
+                } catch (RuntimeException e) {
+                    Logger.error("StudentService", "Invalid attendance record: " + line);
+                }
+            }
+        }
+        Logger.info("Student", student.getStudentId() + " viewed " + records.size()
+                + " attendance record(s) for " + section.getSectionId());
+        return records;
+    }
+
+    /** Same rule as InstructorService: only PRESENT counts as attended. */
+    public double viewAttendancePercentage(Student student, Section section) {
+        List<Attendance> records = viewAttendance(student, section);
+        if (records.isEmpty()) {
+            return 0.0;
+        }
+        int present = 0;
+        for (Attendance record : records) {
+            if (record.getStatus() == AttendanceStatus.PRESENT) {
+                present++;
+            }
+        }
+        double percentage = present * 100.0 / records.size();
+        Logger.info("Student", student.getStudentId() + " attendance in " + section.getSectionId()
+                + ": " + String.format("%.1f", percentage) + "%");
+        return percentage;
     }
 }

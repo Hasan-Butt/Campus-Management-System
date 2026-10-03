@@ -17,10 +17,16 @@ public abstract class Request {
     private int priority;
 
     public Request(String requestId, String description, int priority) {
+        this(requestId, description, priority, LocalDate.now(), RequestStatus.PENDING);
+    }
+
+    /** Used when loading a saved request with its original date and status. */
+    public Request(String requestId, String description, int priority,
+                   LocalDate requestDate, RequestStatus status) {
         this.requestId = requestId;
-        this.requestDate = LocalDate.now();
+        this.requestDate = requestDate;
         this.description = description;
-        this.status = RequestStatus.PENDING;
+        this.status = status;
         this.priority = priority;
     }
 

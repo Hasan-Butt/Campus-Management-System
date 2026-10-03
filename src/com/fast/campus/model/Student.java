@@ -121,6 +121,17 @@ public abstract class Student extends Person {
         requests.add(request);
     }
 
+    public void submitGenericRequest(GenericRequest request) throws InvalidRequestException {
+        if (request == null || request.getCategory() == null) {
+            throw new InvalidRequestException("Request must have a category");
+        }
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
+            throw new InvalidRequestException("Request description cannot be empty");
+        }
+        request.submit();
+        requests.add(request);
+    }
+
     public List<Request> viewRequests() {
         return requests;
     }
