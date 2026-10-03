@@ -3,6 +3,8 @@ package com.fast.campus.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fast.campus.exception.UnauthorizedActionException;
+
 /**
  * A student who also serves as a Teaching Assistant for a section.
  *
@@ -25,18 +27,19 @@ public class TeachingAssistant extends Student {
     @Override
     public String getRole() { return "TeachingAssistant"; }
 
+    // --- Helper method ---
+
+    private void checkOwnSection(Assignment assignment, String action) throws UnauthorizedActionException {
+        if (assignedSection == null || assignment.getSection() != assignedSection) {
+            throw new UnauthorizedActionException(getName(), action);
+        }
+    }
+
     // --- TA Domain operations (Kabeer implements) ---
 
-    public void createAssignment() {
-        // TODO: Kabeer — implement assignment creation
-    }
-
-    public void readSubmissions() {
-        // TODO: Kabeer — implement submission reading
-    }
-
-    public void giveEvaluationAndSubmission() {
-        // TODO: Kabeer — implement evaluation workflow
+    public List<Submission> viewSubmissions(Assignment assignment) throws UnauthorizedActionException {
+        checkOwnSection(assignment, "view submission of " + assignment.getTitle());
+        return assignment.getSubmissions();
     }
 
     // --- Getters / Setters ---
