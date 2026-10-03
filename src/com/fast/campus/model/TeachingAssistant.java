@@ -1,5 +1,6 @@
 package com.fast.campus.model;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +38,24 @@ public class TeachingAssistant extends Student {
     }
 
     // --- TA Domain operations (Kabeer implements) ---
+
+    public Assignment createAssignment(String title, String description, LocalDate deadline, double totalMarks)
+            throws UnauthorizedActionException, AssessmentException {
+        if (assignedSection == null) {
+            throw new UnauthorizedActionException(getName(), "create assignment " + title);
+        }
+        if (title == null || title.isBlank()) {
+            throw new AssessmentException("Assignment title cannot be empty");
+        }
+        if (totalMarks <= 0) {
+            throw new AssessmentException("Total marks must be greater than 0");
+        }
+        if (deadline == null || deadline.isBefore(LocalDate.now())) {
+            throw new AssessmentException("Deadline cannot be in the past");
+        }
+        String assignmentId = "A-" + System.currentTimeMillis();
+        return new Assignment(assignmentId, title, description, deadline, totalMarks, assignedSection, this);
+    }
 
     public List<Submission> viewSubmissions(Assignment assignment) throws UnauthorizedActionException {
         checkOwnSection(assignment, "view submission of " + assignment.getTitle());
