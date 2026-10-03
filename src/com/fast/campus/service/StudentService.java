@@ -371,8 +371,12 @@ public class StudentService {
             Student creator = findStudent(p[6]);
             TeachingAssistant ta = creator instanceof TeachingAssistant ? (TeachingAssistant) creator : null;
             try {
-                assignments.add(new Assignment(p[1], p[2], p[7], LocalDate.parse(p[3]),
-                        Double.parseDouble(p[4]), section, ta));
+                Assignment assignment = new Assignment(p[1], p[2], p[7], LocalDate.parse(p[3]),
+                        Double.parseDouble(p[4]), section, ta);
+                assignments.add(assignment);
+                if (ta != null) {
+                    ta.getCreatedAssignments().add(assignment);
+                }
             } catch (RuntimeException e) { // bad date or number in the file
                 Logger.error("StudentService", "Invalid assignment record: " + line);
             }
@@ -390,7 +394,7 @@ public class StudentService {
                         s.getStudent().getStudentId(), s.getSubmissionDate().toString(), s.getStatus().name(),
                         String.valueOf(s.getMarks()),
                         f != null ? f.getFeedbackId() : "NONE",
-                        f != null ? clean(f.getEvaluator()) : "",
+                        f != null && f.getEvaluator() != null ? f.getEvaluator().getEvaluatorId() : "",
                         f != null ? f.getDate().toString() : "",
                         f != null ? clean(f.getComments()) : "",
                         clean(s.getContent())));
@@ -413,8 +417,11 @@ public class StudentService {
                 continue;
             }
             try {
+                Student evaluatorStudent = findStudent(p[8]); // feedback here is given by TAs
+                Evaluator evaluator = evaluatorStudent instanceof TeachingAssistant
+                        ? (TeachingAssistant) evaluatorStudent : null;
                 Feedback feedback = p[7].equals("NONE") ? null
-                        : new Feedback(p[7], p[8], p[10], LocalDate.parse(p[9]));
+                        : new Feedback(p[7], evaluator, p[10], LocalDate.parse(p[9]));
                 Submission submission = new Submission(p[1], assignment, student, LocalDate.parse(p[4]), p[11],
                         Double.parseDouble(p[6]), feedback, SubmissionStatus.valueOf(p[5]));
                 assignment.addSubmission(submission);

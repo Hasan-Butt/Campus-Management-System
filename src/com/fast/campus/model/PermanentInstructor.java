@@ -9,7 +9,7 @@ import java.util.List;
  *
  * <p>Owner: Saim</p>
  */
-public class PermanentInstructor extends Instructor {
+public class PermanentInstructor extends Instructor implements Evaluator {
 
     private List<FYPGroup> supervisedGroups;
 
@@ -23,6 +23,23 @@ public class PermanentInstructor extends Instructor {
     public String getRole() {
         return "PermanentInstructor";
     }
+
+    // --- Evaluator ---
+
+    /** Reports the evaluation status of every FYP group this instructor supervises. */
+    @Override
+    public void evaluate() {
+        for (FYPGroup group : supervisedGroups) {
+            System.out.println("  " + group.getTitle() + ": " + group.getEvaluations().size()
+                    + " evaluation(s) recorded");
+        }
+    }
+
+    @Override
+    public String getEvaluatorId()   { return getTeacherId(); }
+
+    @Override
+    public String getEvaluatorName() { return getName(); }
 
     public void assignTA(NormalStudent student, Section section) {
         if (student != null && section != null) {

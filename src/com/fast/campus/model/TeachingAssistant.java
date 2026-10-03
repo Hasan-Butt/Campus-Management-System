@@ -1,5 +1,6 @@
 package com.fast.campus.model;
 
+import com.fast.campus.enums.SubmissionStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,9 +13,10 @@ import com.fast.campus.exception.UnauthorizedActionException;
  *
  * <p>Owner: Kabeer</p>
  */
-public class TeachingAssistant extends Student {
+public class TeachingAssistant extends Student implements Evaluator {
 
     private Section assignedSection;
+    private List<Assignment> createdAssignments = new ArrayList<>();
 
     public TeachingAssistant(String id, String name, String email,
                               String phoneNumber, String studentId) {
@@ -28,6 +30,29 @@ public class TeachingAssistant extends Student {
 
     @Override
     public String getRole() { return "TeachingAssistant"; }
+
+    // --- Evaluator ---
+
+    /** Reports how much grading is still pending on this TA's assignments. */
+    @Override
+    public void evaluate() {
+        for (Assignment assignment : createdAssignments) {
+            int ungraded = 0;
+            for (Submission submission : assignment.getSubmissions()) {
+                if (submission.getStatus() != SubmissionStatus.EVALUATED) {
+                    ungraded++;
+                }
+            }
+            System.out.println("  " + assignment.getTitle() + ": " + ungraded + " of "
+                    + assignment.getSubmissions().size() + " submission(s) still to evaluate");
+        }
+    }
+
+    @Override
+    public String getEvaluatorId()   { return getStudentId(); }
+
+    @Override
+    public String getEvaluatorName() { return getName(); }
 
     // --- Helper method ---
 
@@ -54,7 +79,9 @@ public class TeachingAssistant extends Student {
             throw new AssessmentException("Deadline cannot be in the past");
         }
         String assignmentId = "A-" + System.currentTimeMillis();
-        return new Assignment(assignmentId, title, description, deadline, totalMarks, assignedSection, this);
+        Assignment assignment = new Assignment(assignmentId, title, description, deadline, totalMarks, assignedSection, this);
+        createdAssignments.add(assignment);
+        return assignment;
     }
 
     public List<Submission> viewSubmissions(Assignment assignment) throws UnauthorizedActionException {
@@ -83,12 +110,13 @@ public class TeachingAssistant extends Student {
 
     public void giveFeedback(Submission submission, String comments) throws UnauthorizedActionException {
         checkOwnSection(submission.getAssignment(), "give feedback on " + submission.getSubmissionId());
-        Feedback feedback = new Feedback("F-" + System.currentTimeMillis(), getStudentId(), comments);
+        Feedback feedback = new Feedback("F-" + System.currentTimeMillis(), this, comments);
         submission.addFeedback(feedback);
     }
 
     // --- Getters / Setters ---
 
+    public List<Assignment> getCreatedAssignments()  { return createdAssignments; }
     public Section getAssignedSection()              { return assignedSection; }
     public void setAssignedSection(Section section)  { this.assignedSection = section; }
 }
