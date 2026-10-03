@@ -3,6 +3,7 @@ import java.util.List;
 import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.exception.CourseException;
 import com.fast.campus.service.AcademicOfficeService;
+import com.fast.campus.util.Logger;
 
 /**
  * Concrete administrator responsible for managing courses, sections,
@@ -31,19 +32,19 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.createCourse(course);
         } catch (CourseException e) {
-            System.out.println("Course creation failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Course creation failed: " + e.getMessage());
         }
     }
 
     public void updateCourse(Course course){
         if (course == null) {
-            System.out.println("Course update failed: course is null");
+            Logger.error("AcademicOfficeAdmin", "Course update failed: course is null");
             return;
         }
         try {
             service.updateCourse(course.getCourseCode(), course.getTitle(), course.getCreditHours());
         } catch (CourseException e) {
-            System.out.println("Course update failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Course update failed: " + e.getMessage());
         }
     }
 
@@ -61,19 +62,19 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.createSection(section);
         } catch (CourseException e) {
-            System.out.println("Section creation failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Section creation failed: " + e.getMessage());
         }
     }
 
     public void updateSection(Section section){
         if (section == null) {
-            System.out.println("Section update failed: section is null");
+            Logger.error("AcademicOfficeAdmin", "Section update failed: section is null");
             return;
         }
         try {
             service.updateSection(section.getSectionId(), section.getCapacity());
         } catch (CourseException e) {
-            System.out.println("Section update failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Section update failed: " + e.getMessage());
         }
     }
 
@@ -81,7 +82,7 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.setCapacity(section, capacity);
         } catch (CourseException e) {
-            System.out.println("Set capacity failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Set capacity failed: " + e.getMessage());
         }
     }
 
@@ -89,7 +90,7 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.assignRoom(section, schedule);
         } catch (CourseException e) {
-            System.out.println("Room assignment failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Room assignment failed: " + e.getMessage());
         }
     }
 
@@ -97,7 +98,7 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.assignInstructor(section, instructor);
         } catch (CourseException e) {
-            System.out.println("Instructor assignment failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Instructor assignment failed: " + e.getMessage());
         }
     }
 
@@ -109,7 +110,7 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.approveRequest(request);
         } catch (CourseException e) {
-            System.out.println("Approve request failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Approve request failed: " + e.getMessage());
         }
     }
 
@@ -117,7 +118,7 @@ public class AcademicOfficeAdmin extends Administrator {
         try {
             service.rejectRequest(request);
         } catch (CourseException e) {
-            System.out.println("Reject request failed: " + e.getMessage());
+            Logger.error("AcademicOfficeAdmin", "Reject request failed: " + e.getMessage());
         }
     }
 }
