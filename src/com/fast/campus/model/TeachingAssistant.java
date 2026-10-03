@@ -42,6 +42,17 @@ public class TeachingAssistant extends Student {
         return assignment.getSubmissions();
     }
 
+    public List<Submission> viewLateSubmissions(Assignment assignment) throws UnauthorizedActionException {
+        List<Submission> allSubmissions = viewSubmissions(assignment);
+        List<Submission> lateSubmissions = new ArrayList<>();
+        for (Submission submission : allSubmissions) {
+            if (submission.isLate()) {
+                lateSubmissions.add(submission);
+            }
+        }
+        return lateSubmissions;
+    }
+
     // --- Getters / Setters ---
 
     public Section getAssignedSection()              { return assignedSection; }
