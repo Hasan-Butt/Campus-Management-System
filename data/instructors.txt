@@ -1,2 +1,5 @@
-# Instructors data file
-# Format: INSTRUCTOR|id|name|email|phone|teacherId|role
+# Format: INSTRUCTOR|type(PERM/VISIT)|id|name|email|phone|teacherId
+INSTRUCTOR|PERM|1122|Arslan Asif|arslan.asif@nu.edu.pk|03001234567|1122
+INSTRUCTOR|VISIT|2233|Faizan|faizan@nu.edu.pk|03007654321|2233
+INSTRUCTOR|PERM|I003|Dr Ali Afzaal|ali@lhr.nu.edu.pk|03214024024|0101
+INSTRUCTOR|VISIT|I004|Dr Amir Wali|amir@lhr.nu.edu.pk|0321453553|0102

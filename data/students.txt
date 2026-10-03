@@ -1,2 +1,5 @@
-# Students data file
-# Format: STUDENT|id|name|email|phone|studentId|role
+# Format: STUDENT|id|name|email|phone|studentId|role|assignedSectionId
+STUDENT|S001|Saim Arif|saim.arif@nu.edu.pk|03111234567|22K-1234|NormalStudent|NONE
+STUDENT|S002|Ahmad Butt|ahmad.butt@nu.edu.pk|03222345678|22K-5678|TeachingAssistant|NONE
+STUDENT|S001|Ali Khan|ali@lhr.nu.edu.pk|03215435605|23L-3022|NormalStudent|NONE
+STUDENT|S002|Sara Khan|sara@lhr.nu.edu.pk|03221445925|22I-3001|NormalStudent|NONE

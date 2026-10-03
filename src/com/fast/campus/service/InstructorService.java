@@ -47,11 +47,11 @@ public class InstructorService {
      * Constructor - loads existing data from persistence files
      */
     public InstructorService() {
-        loadInstructorData();
-        loadAttendanceData();
-        loadFYPGroupData();
-        loadFYPMeetingData();
-        loadFYPEvaluationData();
+        loadInstructors();
+        loadAttendance();
+        loadFYPGroups();
+        loadFYPMeetings();
+        loadFYPEvaluations();
     }
     
     // ================================================================

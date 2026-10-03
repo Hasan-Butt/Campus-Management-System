@@ -10,6 +10,7 @@ import com.fast.campus.service.InstructorService;
 import com.fast.campus.service.StudentService;
 import com.fast.campus.util.Logger;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Scanner;
 
@@ -215,6 +216,7 @@ public class ConsoleUI {
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new PermanentInstructor(id, name, email, phone, tId));
+                        instructorService.saveInstructors();
                         System.out.println("Permanent Instructor created.");
                         Logger.info("Admin", "Created Permanent Instructor: " + tId);
                     } else if (um.equals("3")) {
@@ -224,6 +226,7 @@ public class ConsoleUI {
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new VisitingInstructor(id, name, email, phone, tId));
+                        instructorService.saveInstructors();
                         System.out.println("Visiting Instructor created.");
                         Logger.info("Admin", "Created Visiting Instructor: " + tId);
                     } else if (um.equals("4")) {
@@ -641,10 +644,9 @@ public class ConsoleUI {
             }
         }
     }
-}
 
-// --- FYP SUPERVISION MENU ---
-private void fypMenu(PermanentInstructor pInst) {
+    // --- FYP SUPERVISION MENU ---
+    private void fypMenu(PermanentInstructor pInst) {
     while (true) {
         System.out.println("\n--- FYP Supervision Menu ---");
         System.out.println("1. View Supervised FYP Groups");
@@ -659,7 +661,14 @@ private void fypMenu(PermanentInstructor pInst) {
         try {
             if (choice.equals("1")) {
                 List<FYPGroup> groups = instructorService.getFYPGroupsBySupervisor(pInst);
-                printList("Supervised FYP Groups", groups, "No groups under supervision");
+                if (groups.isEmpty()) {
+                    System.out.println("No groups under supervision");
+                } else {
+                    System.out.println("\n=== Supervised FYP Groups ===");
+                    for (FYPGroup g : groups) {
+                        System.out.println("  - " + g.getGroupId() + ": " + g.getTitle());
+                    }
+                }
             } else if (choice.equals("2")) {
                 System.out.print("Enter FYP Group ID: ");
                 FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
@@ -675,7 +684,7 @@ private void fypMenu(PermanentInstructor pInst) {
                     LocalDate date = promptDate("Meeting Date");
                     System.out.print("Agenda: ");
                     String agenda = scanner.nextLine();
-                    FYPMeeting meeting = new FYPMeeting("M" + System.currentTimeMillis(), group, date, agenda);
+                    FYPMeeting meeting = new FYPMeeting("M" + System.currentTimeMillis(), date, agenda);
                     instructorService.scheduleFYPMeeting(pInst, group, meeting);
                     System.out.println("Meeting scheduled.");
                 }
@@ -683,11 +692,12 @@ private void fypMenu(PermanentInstructor pInst) {
                 System.out.print("Enter FYP Group ID: ");
                 FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
                 if (group != null) {
+                    System.out.print("Score (0-100): ");
+                    double score = Double.parseDouble(scanner.nextLine());
                     System.out.print("Evaluation feedback: ");
                     String feedback = scanner.nextLine();
                     FYPEvaluation eval = new FYPEvaluation("E" + System.currentTimeMillis());
-                    eval.addFeedback(feedback);
-                    instructorService.evaluateFYPIdea(pInst, group, eval);
+                    instructorService.evaluateFYPIdea(pInst, group, eval, score, feedback);
                     System.out.println("Idea evaluated.");
                 }
             } else if (choice.equals("5")) {
@@ -705,4 +715,5 @@ private void fypMenu(PermanentInstructor pInst) {
             System.out.println("Error: " + e.getMessage());
         }
     }
+}
 }
