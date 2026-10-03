@@ -15,6 +15,7 @@ public abstract class Student extends Person {
     protected int totalCreditHours;
     protected List<Section> enrolledSections;
     protected List<Course> registeredCourses;
+    protected List<Enrollment> enrollments;
 
     public Student(String id, String name, String email,
                    String phoneNumber, String studentId) {
