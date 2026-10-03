@@ -1,6 +1,7 @@
 package com.fast.campus.model;
 
 import com.fast.campus.enums.Day;
+import java.time.LocalTime;
 
 /**
  * Represents the scheduled time slot and room for a section.
@@ -10,11 +11,18 @@ import com.fast.campus.enums.Day;
 public class Schedule {
 
     private Day day;
-    private String startTime; // e.g., "08:00"
-    private String endTime;   // e.g., "09:30"
+    private LocalTime startTime; // e.g., "08:00"
+    private LocalTime endTime;   // e.g., "09:30"
     private String room;
 
     public Schedule(Day day, String startTime, String endTime, String room) {
+        this.day = day;
+        this.startTime = LocalTime.parse(startTime);
+        this.endTime = LocalTime.parse(endTime);
+        this.room = room;
+    }
+
+    public Schedule(Day day, LocalTime startTime, LocalTime endTime, String room) {
         this.day = day;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -24,14 +32,13 @@ public class Schedule {
     /**
      * Checks whether this schedule overlaps with another schedule.
      *
-     * @param other the schedule to compare against
+     * @param schedule the schedule to compare against
      * @return true if there is a time/day clash
      */
-    public boolean hasClash(Schedule other) {
-        if (this.day != other.day) return false;
-        // Simple string-based time comparison (HH:mm format)
-        return this.startTime.compareTo(other.endTime) < 0
-                && other.startTime.compareTo(this.endTime) < 0;
+    public boolean hasClash(Schedule schedule) {
+        if (this.day != schedule.day) return false;
+        return this.startTime.isBefore(schedule.endTime)
+                && schedule.startTime.isBefore(this.endTime);
     }
 
     public String getScheduleInfo() {
@@ -41,16 +48,16 @@ public class Schedule {
     // --- Getters ---
 
     public Day getDay()        { return day; }
-    public String getStartTime() { return startTime; }
-    public String getEndTime()   { return endTime; }
+    public LocalTime getStartTime() { return startTime; }
+    public LocalTime getEndTime()   { return endTime; }
     public String getRoom()      { return room; }
 
     // --- Setters ---
 
-    public void setRoom(String room)           { this.room = room; }
-    public void setDay(Day day)                { this.day = day; }
-    public void setStartTime(String startTime) { this.startTime = startTime; }
-    public void setEndTime(String endTime)     { this.endTime = endTime; }
+    public void setRoom(String room)               { this.room = room; }
+    public void setDay(Day day)                    { this.day = day; }
+    public void setStartTime(LocalTime startTime)  { this.startTime = startTime; }
+    public void setEndTime(LocalTime endTime)      { this.endTime = endTime; }
 
     @Override
     public String toString() {
