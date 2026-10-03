@@ -1,6 +1,7 @@
 package com.fast.campus.model;
 import java.util.List;
 import com.fast.campus.enums.RequestStatus;
+import com.fast.campus.service.AcademicOfficeService;
 
 /**
  * Concrete administrator responsible for managing courses, sections,
@@ -11,9 +12,13 @@ import com.fast.campus.enums.RequestStatus;
 
 public class AcademicOfficeAdmin extends Administrator {
 
+    private final AcademicOfficeService service;
+
     public AcademicOfficeAdmin(String id, String name, String email,
-                               String phoneNumber, String adminId) {
+                               String phoneNumber, String adminId,
+                               AcademicOfficeService service) {
         super(id, name, email, phoneNumber, adminId);
+        this.service = service;
     }
 
     @Override
@@ -40,13 +45,13 @@ public class AcademicOfficeAdmin extends Administrator {
     }
 
     public Course searchCourse(String courseCode){
-        if (courseCode != null) {
+        Course course = service.searchCourse(courseCode);
+        if (course != null) {
             System.out.println("Course found successfully");
-        }
-        else{
+        } else {
             System.out.println("Course not found");
         }
-        return null;
+        return course;
     }
 
     public void createSection(Section section){

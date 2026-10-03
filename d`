@@ -1,0 +1,29 @@
+[33mcommit e2b67c60072b04e9d01e37538aaa3ed97f74abf2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev/Hasan[m[33m, [m[1;31morigin/dev/Hasan[m[33m, [m[1;32macademic-office[m[33m)[m
+Author: Muhammad Hasan Butt <hasan.butt2005@gmail.com>
+Date:   Fri Oct 2 00:59:50 2026 +0500
+
+    Added the file service file for AcademicOfficeService
+
+[33mcommit b71d430aec01a3b7b24fa0150850b1c806b7efde[m
+Author: Muhammad Hasan Butt <hasan.butt2005@gmail.com>
+Date:   Fri Oct 2 00:37:04 2026 +0500
+
+    Completed the Schedule Model
+
+[33mcommit 22f232a67452ea99e9a08280bccaf012a947bd2f[m
+Author: Muhammad Hasan Butt <hasan.butt2005@gmail.com>
+Date:   Fri Oct 2 00:32:15 2026 +0500
+
+    Completed the modal for Section
+
+[33mcommit 6b463c09ba98de008434dc6523acab840ba3c0dc[m
+Author: Muhammad Hasan Butt <hasan.butt2005@gmail.com>
+Date:   Thu Oct 1 22:44:23 2026 +0500
+
+    Completed the modal for the Course
+
+[33mcommit bf240ac21243b010fac62bafaea817cbe56d6a9d[m
+Author: Muhammad Hasan Butt <hasan.butt2005@gmail.com>
+Date:   Thu Oct 1 22:39:43 2026 +0500
+
+    Completed and the modal for AcademicOfficeAdmin
