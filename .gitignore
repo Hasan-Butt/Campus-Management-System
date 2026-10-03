@@ -6,3 +6,6 @@ build/
 .idea/
 *.iml
 .vscode/
+
+# Generated build file list
+sources.txt

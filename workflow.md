@@ -81,15 +81,15 @@ Here is the clean separation of concerns followed across the entire project:
 │                      (com.fast.campus.service.*)                       │
 │  • Business logic & Use cases (e.g. registerCourse, evaluateFYP)       │
 │  • Multi-entity validation (prerequisites, clash checks, credit limits)│
-│  • Coordinates between Models, File I/O, and Logger                   │
+│  • Coordinates between Models, File I/O, and Logger                    │
 └──────────────────┬───────────────────┬───────────────────┬─────────────┘
                    │ reads/writes      │ logs              │ manipulates
                    ▼                   ▼                   ▼
-            ┌──────────────┐    ┌──────────────┐    ┌────────────────────┐
-            │  FILE I/O    │    │    LOGGER    │    │    MODEL LAYER     │
-            │(FileManager) │    │ (Logger.java)│    │(com.fast.campus.   │
+            ┌──────────────┐    ┌───────────────┐   ┌────────────────────┐
+            │  FILE I/O    │    │    LOGGER     │   │    MODEL LAYER     │
+            │(FileManager) │    │ (Logger.java) │   │(com.fast.campus.   │
             │  data/*.txt  │    │logs/campus.log│   │     model.*)       │
-            └──────────────┘    └──────────────┘    │ • Fields/Attributes│
+            └──────────────┘    └───────────────┘   │ • Fields/Attributes│
                                                     │ • Getters/Setters  │
                                                     │ • Self-state rules │
                                                     │   (isFull, isLate) │
@@ -373,7 +373,7 @@ Throw domain-specific exceptions from `com.fast.campus.exception.*` rather than 
 
 ```text
 ┌────────────────────────────────────────────────────────┐
-│ Phase 1: Foundation (COMPLETED ✅)                      │
+│ Phase 1: Foundation (COMPLETED ✅)                     │
 │ - Shared Enums, Exceptions, Comparators, Logger        │
 │ - Base Person & Administrator, Stubs for Student/Inst  │
 │ - Verified compiling with 0 errors (53 classes)        │

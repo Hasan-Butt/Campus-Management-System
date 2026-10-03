@@ -28,11 +28,11 @@ The system contains:
 
 ### Team Architecture
 
-| Member | Primary Responsibility |
-|---|---|
-| **Hasan** | Core Domain + Academic Office Admin |
-| **Kabeer** | Student + Teaching Assistant |
-| **Saim** | Instructor + FYP Module |
+| Member     | Primary Responsibility              |
+| ---------- | ----------------------------------- |
+| **Hasan**  | Core Domain + Academic Office Admin |
+| **Kabeer** | Student + Teaching Assistant        |
+| **Saim**   | Instructor + FYP Module             |
 
 The division follows architectural boundaries so the foundation can be built first and the other modules can then be developed in parallel.
 

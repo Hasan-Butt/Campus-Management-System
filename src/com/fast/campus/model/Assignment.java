@@ -35,7 +35,7 @@ public class Assignment extends Assessment {
     }
 
     public boolean isDeadlinePassed() {
-        return LocalDate.now().isAfter(deadline);
+        return LocalDate.now().isAfter(getDeadline());
     }
 
     // --- Getters ---

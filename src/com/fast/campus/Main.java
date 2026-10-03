@@ -21,7 +21,7 @@ public final class Main {
         // Initialize services
         AcademicOfficeService academicService = new AcademicOfficeService();
         InstructorService instructorService = new InstructorService();
-        StudentService studentService = new StudentService();
+        StudentService studentService = new StudentService(academicService);
 
         System.out.println("\n--- Academic Office Admin Demo ---\n");
 
