@@ -15,7 +15,6 @@ public abstract class Student extends Person {
     protected int totalCreditHours;
     protected List<Section> enrolledSections;
     protected List<Course> registeredCourses;
-    protected List<Enrollment> enrollments;
 
     public Student(String id, String name, String email,
                    String phoneNumber, String studentId) {
@@ -24,7 +23,6 @@ public abstract class Student extends Person {
         this.totalCreditHours = 0;
         this.enrolledSections = new ArrayList<>();
         this.registeredCourses = new ArrayList<>();
-        this.enrollments = new ArrayList<>();
     }
 
     // --- Domain operations (to be implemented by Kabeer) ---
@@ -46,7 +44,6 @@ public abstract class Student extends Person {
     public int getTotalCreditHours()                { return totalCreditHours; }
     public List<Section> getEnrolledSections()      { return enrolledSections; }
     public List<Course> getRegisteredCourses()      { return registeredCourses; }
-    public List<Enrollment> getEnrollments()        { return enrollments; }
 
     // --- Setters ---
 
