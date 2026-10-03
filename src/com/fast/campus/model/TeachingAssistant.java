@@ -62,6 +62,12 @@ public class TeachingAssistant extends Student {
         submission.assignMarks(marks);
     }
 
+    public void giveFeedback(Submission submission, String comments) throws UnauthorizedActionException {
+        checkOwnSection(submission.getAssignment(), "give feedback on " + submission.getSubmissionId());
+        Feedback feedback = new Feedback("F-" + System.currentTimeMillis(), getStudentId(), comments);
+        submission.addFeedback(feedback);
+    }
+
     // --- Getters / Setters ---
 
     public Section getAssignedSection()              { return assignedSection; }
