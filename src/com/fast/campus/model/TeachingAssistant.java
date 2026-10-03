@@ -3,6 +3,7 @@ package com.fast.campus.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fast.campus.exception.AssessmentException;
 import com.fast.campus.exception.UnauthorizedActionException;
 
 /**
@@ -51,6 +52,14 @@ public class TeachingAssistant extends Student {
             }
         }
         return lateSubmissions;
+    }
+
+    public void evaluateSubmission(Submission submission, double marks) throws UnauthorizedActionException, AssessmentException {
+        checkOwnSection(submission.getAssignment(), "evaluate submission " + submission.getSubmissionId());
+        if (marks < 0 || marks > submission.getAssignment().getTotalMarks()) {
+            throw new AssessmentException("Marks must be between 0 and " + submission.getAssignment().getTotalMarks());
+        }
+        submission.assignMarks(marks);
     }
 
     // --- Getters / Setters ---
