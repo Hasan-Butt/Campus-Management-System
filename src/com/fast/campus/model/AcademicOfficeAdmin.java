@@ -1,6 +1,7 @@
 package com.fast.campus.model;
 import java.util.List;
 import com.fast.campus.enums.RequestStatus;
+import com.fast.campus.exception.CourseException;
 import com.fast.campus.service.AcademicOfficeService;
 
 /**
@@ -27,20 +28,22 @@ public class AcademicOfficeAdmin extends Administrator {
     }
 
     public void createCourse(Course course){
-        if (course != null) {
-            System.out.println("Course created successfully");
-        }
-        else{
-            System.out.println("Course creation failed");
+        try {
+            service.createCourse(course);
+        } catch (CourseException e) {
+            System.out.println("Course creation failed: " + e.getMessage());
         }
     }
 
     public void updateCourse(Course course){
-        if (course != null) {
-            System.out.println("Course updated successfully");
+        if (course == null) {
+            System.out.println("Course update failed: course is null");
+            return;
         }
-        else{
-            System.out.println("Course update failed");
+        try {
+            service.updateCourse(course.getCourseCode(), course.getTitle(), course.getCreditHours());
+        } catch (CourseException e) {
+            System.out.println("Course update failed: " + e.getMessage());
         }
     }
 
@@ -55,55 +58,65 @@ public class AcademicOfficeAdmin extends Administrator {
     }
 
     public void createSection(Section section){
-        if (section != null) {
-            System.out.println("Section created successfully");
-        }
-        else{
-            System.out.println("Section creation failed");
+        try {
+            service.createSection(section);
+        } catch (CourseException e) {
+            System.out.println("Section creation failed: " + e.getMessage());
         }
     }
 
     public void updateSection(Section section){
-        if (section != null) {
-            System.out.println("Section updated successfully");
+        if (section == null) {
+            System.out.println("Section update failed: section is null");
+            return;
+        }
+        try {
+            service.updateSection(section.getSectionId(), section.getCapacity());
+        } catch (CourseException e) {
+            System.out.println("Section update failed: " + e.getMessage());
         }
     }
 
     public void setCapacity(Section section, int capacity){
-        if (section != null && capacity > 0) {
-            section.setCapacity(capacity);
+        try {
+            service.setCapacity(section, capacity);
+        } catch (CourseException e) {
+            System.out.println("Set capacity failed: " + e.getMessage());
         }
     }
 
     public void assignRoom(Section section, Schedule schedule){
-        if (section != null && schedule != null) {
-            section.setSchedule(schedule);
-    }
+        try {
+            service.assignRoom(section, schedule);
+        } catch (CourseException e) {
+            System.out.println("Room assignment failed: " + e.getMessage());
+        }
     }
 
     public void assignInstructor(Section section, Instructor instructor){
-        if (section != null && instructor != null) {
-            section.assignInstructor(instructor);
-    }
-    }
-    public void viewRequests(List<Request> requests){
-        if (requests != null) {
-            System.out.println("Requests viewed successfully");
+        try {
+            service.assignInstructor(section, instructor);
+        } catch (CourseException e) {
+            System.out.println("Instructor assignment failed: " + e.getMessage());
         }
-        else{
-            System.out.println("Requests not found");
-        }   
+    }
+    public List<Request> viewRequests(List<Request> requests){
+        return service.viewRequests(requests);
     }
 
     public void approveRequest(Request request){
-        if (request != null) {
-            request.setStatus(RequestStatus.APPROVED);
+        try {
+            service.approveRequest(request);
+        } catch (CourseException e) {
+            System.out.println("Approve request failed: " + e.getMessage());
         }
     }
 
     public void rejectRequest(Request request){
-        if (request != null) {
-            request.setStatus(RequestStatus.REJECTED);
+        try {
+            service.rejectRequest(request);
+        } catch (CourseException e) {
+            System.out.println("Reject request failed: " + e.getMessage());
         }
     }
 }
