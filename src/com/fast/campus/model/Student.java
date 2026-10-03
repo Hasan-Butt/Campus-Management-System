@@ -1,6 +1,9 @@
 package com.fast.campus.model;
 
+import com.fast.campus.exception.AssessmentException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidRequestException;
+import com.fast.campus.exception.UnauthorizedActionException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,6 +19,7 @@ public abstract class Student extends Person {
     private String studentId;
     private int totalCreditHours;
     private List<Enrollment> enrollments;
+    private List<Request> requests;
 
     // Helper lists kept in sync by Section.enroll()/drop(), which rely on them
     private List<Section> enrolledSections;
@@ -27,6 +31,7 @@ public abstract class Student extends Person {
         this.studentId = studentId;
         this.totalCreditHours = 0;
         this.enrollments = new ArrayList<>();
+        this.requests = new ArrayList<>();
         this.enrolledSections = new ArrayList<>();
         this.registeredCourses = new ArrayList<>();
     }
@@ -80,6 +85,44 @@ public abstract class Student extends Person {
         }
         timetable.sort(Comparator.comparing(Schedule::getDay).thenComparing(Schedule::getStartTime));
         return timetable;
+    }
+
+    public Submission submitAssignment(Assignment assignment, String content)
+            throws UnauthorizedActionException, AssessmentException {
+        if (assignment == null || !enrolledSections.contains(assignment.getSection())) {
+            throw new UnauthorizedActionException(getName(), "submit an assignment of a section they are not enrolled in");
+        }
+        if (content == null || content.isBlank()) {
+            throw new AssessmentException("Submission content cannot be empty");
+        }
+        Submission submission = new Submission("S-" + System.currentTimeMillis(), assignment, this, content);
+        submission.submit(); // SUBMITTED, or LATE if after the deadline (late work is accepted)
+        assignment.addSubmission(submission);
+        return submission;
+    }
+
+    public void submitCourseClashRequest(CourseClashRequest request) throws InvalidRequestException {
+        if (request == null) {
+            throw new InvalidRequestException("Request cannot be empty");
+        }
+        Section current = request.getConflictingSection();
+        Section wanted = request.getRequestedSection();
+        if (current == null || wanted == null) {
+            throw new InvalidRequestException("Both sections must be given");
+        }
+        if (!enrolledSections.contains(current)) {
+            throw new InvalidRequestException("Not registered in section " + current.getSectionId());
+        }
+        if (!wanted.hasClash(current)) { // "Check Section Clash" use case
+            throw new InvalidRequestException("Sections " + current.getSectionId() + " and "
+                    + wanted.getSectionId() + " do not clash, so no request is needed");
+        }
+        request.submit();
+        requests.add(request);
+    }
+
+    public List<Request> viewRequests() {
+        return requests;
     }
 
     // --- Getters ---
