@@ -333,7 +333,7 @@ public class StudentService {
                 }
             }
             lines.add(String.join("|", "STUDENT", s.getId(), clean(s.getName()), clean(s.getEmail()),
-                    clean(s.getPhoneNumber()), s.getStudentId(), s.getRole(), sectionId));
+                    clean(s.getPhone()), s.getStudentId(), s.getRole(), sectionId));
         }
         FileManager.writeAllLines(STUDENTS_FILE, lines);
     }

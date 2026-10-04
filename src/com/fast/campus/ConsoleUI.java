@@ -920,7 +920,7 @@ public class ConsoleUI {
                         if (group == null) break;
                         double score = promptDouble("Score (0-100): ");
                         String feedback = prompt("Evaluation feedback: ");
-                        FYPEvaluation evaluation = new FYPEvaluation("E-" + System.currentTimeMillis());
+                        FYPEvaluation evaluation = new FYPEvaluation("E-" + System.currentTimeMillis(), pInst);
                         instructorService.evaluateFYPIdea(pInst, group, evaluation, score, feedback);
                         System.out.println("Evaluated: score " + evaluation.getScore() + ", feedback: " + evaluation.getFeedback());
                         break;
@@ -928,8 +928,19 @@ public class ConsoleUI {
                     case "8": {
                         FYPGroup group = chooseOwnGroup(pInst);
                         if (group == null) break;
-                        instructorService.provideFYPFeedback(pInst, group, prompt("Feedback: "));
-                        System.out.println("Feedback recorded.");
+                        List<FYPEvaluation> evaluations = group.getEvaluations();
+                        if (evaluations.isEmpty()) {
+                            System.out.println("No evaluations yet — evaluate the idea first (option 7).");
+                            break;
+                        }
+                        for (int i = 0; i < evaluations.size(); i++) {
+                            FYPEvaluation e = evaluations.get(i);
+                            System.out.println("  " + (i + 1) + ". " + e.getEvaluationDate() + " — score " + e.getScore()
+                                    + (e.getFeedback() != null ? " — " + e.getFeedback() : ""));
+                        }
+                        FYPEvaluation evaluation = evaluations.get(promptInt("Which evaluation: ", 1, evaluations.size()) - 1);
+                        instructorService.provideFYPFeedback(pInst, group, evaluation, prompt("Feedback: "));
+                        System.out.println("Feedback saved: " + evaluation.getFeedback());
                         break;
                     }
                     case "0":

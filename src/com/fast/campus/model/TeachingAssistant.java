@@ -25,7 +25,7 @@ public class TeachingAssistant extends Student implements Evaluator {
 
     public TeachingAssistant(NormalStudent student) {
         super(student.getId(), student.getName(), student.getEmail(),
-              student.getPhoneNumber(), student.getStudentId());
+              student.getPhone(), student.getStudentId());
     }
 
     @Override

@@ -14,4 +14,8 @@ public abstract class Administrator extends Person {
     }
 
     public String getAdminId() { return adminId; }
+
+    /** UML declares getRole() on Administrator; subclasses refine it (e.g. AcademicOfficeAdmin). */
+    @Override
+    public String getRole() { return "Administrator"; }
 }
