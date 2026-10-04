@@ -2,6 +2,7 @@ package com.fast.campus.service;
 
 import com.fast.campus.enums.AttendanceStatus;
 import com.fast.campus.exception.FYPException;
+import com.fast.campus.exception.InvalidFYPEvaluationException;
 import com.fast.campus.exception.InvalidFYPGroupException;
 import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.model.*;
@@ -772,21 +773,21 @@ public class InstructorService {
      */
     public void evaluateFYPIdea(PermanentInstructor instructor, FYPGroup group,
                                 FYPEvaluation evaluation, double score, String feedback)
-            throws UnauthorizedActionException {
-        
+            throws UnauthorizedActionException, InvalidFYPEvaluationException {
+
         if (instructor == null) {
             Logger.error("InstructorService", "Cannot evaluate FYP - instructor is null");
             throw new UnauthorizedActionException("Instructor cannot be null");
         }
-        
+
         if (group == null) {
             Logger.error(instructor.getTeacherId(), "Cannot evaluate FYP - group is null");
             throw new UnauthorizedActionException("FYP group cannot be null");
         }
-        
+
         if (evaluation == null) {
             Logger.error(instructor.getTeacherId(), "Cannot evaluate FYP - evaluation is null");
-            throw new UnauthorizedActionException("Evaluation cannot be null");
+            throw new InvalidFYPEvaluationException("Evaluation cannot be null");
         }
         
         // Verify that the instructor supervises this group
@@ -797,10 +798,11 @@ public class InstructorService {
             throw new UnauthorizedActionException(errorMsg);
         }
         
-        // Validate score (typically 0-100)
+        // Validate score: must be 0-100
         if (score < 0 || score > 100) {
-            Logger.warn(instructor.getTeacherId(),
-                    "FYP evaluation score " + score + " is outside typical range [0-100]");
+            Logger.error(instructor.getTeacherId(),
+                    "FYP evaluation score " + score + " is outside the range [0-100]");
+            throw new InvalidFYPEvaluationException("Score must be between 0 and 100");
         }
         
         // Perform evaluation

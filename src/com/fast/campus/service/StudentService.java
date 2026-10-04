@@ -577,6 +577,38 @@ public class StudentService {
         return list;
     }
 
+    /**
+     * Carries out an APPROVED course clash request: the admin has allowed the clash, so the
+     * student is enrolled in the requested section without the timetable-clash check
+     * (capacity is still checked). Does nothing if already enrolled there.
+     */
+    public void applyApprovedClashRequest(CourseClashRequest request) throws CourseException {
+        if (request == null || request.getStatus() != RequestStatus.APPROVED) {
+            return;
+        }
+        Student owner = null;
+        for (Student s : students) {
+            if (s.viewRequests().contains(request)) {
+                owner = s;
+            }
+        }
+        Section wanted = request.getRequestedSection();
+        if (owner == null || wanted == null || owner.getEnrolledSections().contains(wanted)) {
+            return;
+        }
+        // Section.enroll(Enrollment) checks capacity but not clashes — exactly what an approved clash needs
+        wanted.enroll(new Enrollment("ENR-" + wanted.getSectionId() + "-" + owner.getStudentId(),
+                owner, wanted, LocalDate.now()));
+        if (wanted.getCourse() != null && !owner.getRegisteredCourses().contains(wanted.getCourse())) {
+            owner.getRegisteredCourses().add(wanted.getCourse());
+        }
+        owner.calculateTotalCreditHours();
+        saveEnrollments();
+        Logger.info("AcademicOfficeAdmin", "Clash request " + request.getRequestId() + " approved: "
+                + owner.getStudentId() + " enrolled in " + wanted.getSectionId()
+                + " (total credit hours: " + owner.getTotalCreditHours() + ")");
+    }
+
     /** Every student's requests, highest priority first — for the Academic Office Admin. */
     public List<Request> getAllRequests() {
         List<Request> all = new ArrayList<>();

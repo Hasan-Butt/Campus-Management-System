@@ -300,6 +300,12 @@ public class ConsoleUI {
         String decision = prompt("1. Approve  2. Reject: ");
         if (decision.equals("1")) {
             academicService.approveRequest(selected);
+            if (selected instanceof CourseClashRequest) {
+                // Approving a clash request means: let the student into the requested section
+                studentService.applyApprovedClashRequest((CourseClashRequest) selected);
+                Section wanted = ((CourseClashRequest) selected).getRequestedSection();
+                System.out.println("Student enrolled in " + wanted.getSectionId() + " (clash allowed).");
+            }
         } else if (decision.equals("2")) {
             academicService.rejectRequest(selected);
         } else {
