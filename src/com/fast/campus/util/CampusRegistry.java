@@ -45,11 +45,14 @@ public class CampusRegistry {
     }
 
     public static void loadAll(AcademicOfficeService ao, InstructorService ins, StudentService stu) {
-        // Users
-                ins.loadInstructors();
-        stu.loadStudents();
+        // Dependency order: courses -> sections -> instructors (+ section links) -> students
+        // -> things that refer to students/sections. (ConsoleUI loads via the service
+        // constructors in this same order.)
         ao.loadCourses();
         ao.loadSections();
+        ins.loadInstructors();
+        ao.restoreInstructorAssignments();
+        stu.loadStudents();
         stu.loadEnrollments();
         stu.loadAssignments();
         stu.loadSubmissions();

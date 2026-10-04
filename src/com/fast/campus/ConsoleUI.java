@@ -22,9 +22,12 @@ public class ConsoleUI {
     private final Scanner scanner;
 
     public ConsoleUI() {
+        // Load order matters: courses/sections -> students (+enrollments, assignments, requests)
+        // -> instructors (+attendance and FYP groups, which refer to students) -> section instructors
         this.academicService = new AcademicOfficeService();
-        this.instructorService = new InstructorService();
         this.studentService = new StudentService(academicService);
+        this.instructorService = new InstructorService();
+        academicService.restoreInstructorAssignments();
         this.scanner = new Scanner(System.in);
     }
 

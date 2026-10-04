@@ -464,19 +464,11 @@ public class InstructorService {
                     + section.getTeachingAssistant().getName());
         }
         
-        instructor.assignTA(student, section);
-        
-        // Assign the TA to the section
-        section.assignTA(student);
-        
-        // Persist the assignment to instructors file
-        String record = String.format("TA_ASSIGNMENT|%s|%s|%s|%s",
-                student.getStudentId(),
-                section.getSectionId(),
-                instructor.getTeacherId(),
-                LocalDate.now().toString());
-        FileManager.appendLine(INSTRUCTORS_FILE, record);
-        
+        instructor.assignTA(student, section); // also links the new TA to the section
+
+        // The TA (role + section) is persisted in students.txt by StudentService.promoteToTA,
+        // so nothing is appended to instructors.txt here (it only holds INSTRUCTOR records).
+
         Logger.info(instructor.getTeacherId(),
                 "TA assigned: " + student.getName() 
                 + " (ID: " + student.getStudentId() + ") to section " 
@@ -523,21 +515,13 @@ public class InstructorService {
         // Add to in-memory storage
         fypGroups.add(group);
         
-        // Persist to file
-        String supervisorId = group.getSupervisor() != null 
-                ? group.getSupervisor().getTeacherId() 
+        // Persist to file (same format as saveFYPGroups/loadFYPGroups)
+        saveFYPGroups();
+        String supervisorId = group.getSupervisor() != null
+                ? group.getSupervisor().getTeacherId()
                 : "NONE";
-        
         int memberCount = group.getMembers() != null ? group.getMembers().size() : 0;
-        
-        String record = String.format("FYPGROUP|%s|%s|%s|%s|%d",
-                group.getGroupId(),
-                group.getTitle(),
-                group.getDescription() != null ? group.getDescription() : "",
-                supervisorId,
-                memberCount);
-        FileManager.appendLine(FYPGROUPS_FILE, record);
-        
+
         Logger.info("InstructorService", 
                 "FYP group created: " + group.getGroupId() 
                 + " - " + group.getTitle()
@@ -641,29 +625,8 @@ public class InstructorService {
      * Helper method to update an FYP group record in the file.
      */
     private void updateFYPGroupInFile(FYPGroup group) {
-        List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
-        List<String> updatedLines = new ArrayList<>();
-        
-        for (String line : lines) {
-            String[] parts = line.split("\\|");
-            if (parts.length >= 2 && parts[0].equals("FYPGROUP") && parts[1].equals(group.getGroupId())) {
-                // Update this group's record
-                String supervisorId = group.getSupervisor() != null 
-                        ? group.getSupervisor().getTeacherId() 
-                        : "NONE";
-                int memberCount = group.getMembers() != null ? group.getMembers().size() : 0;
-                
-                line = String.format("FYPGROUP|%s|%s|%s|%s|%d",
-                        group.getGroupId(),
-                        group.getTitle(),
-                        group.getDescription() != null ? group.getDescription() : "",
-                        supervisorId,
-                        memberCount);
-            }
-            updatedLines.add(line);
-        }
-        
-        FileManager.writeAllLines(FYPGROUPS_FILE, updatedLines);
+        // Rewrite the whole file in the one format loadFYPGroups understands
+        saveFYPGroups();
     }
 
 
@@ -1204,11 +1167,22 @@ public class InstructorService {
             if (line.startsWith("#") || line.trim().isEmpty()) continue;
             String[] p = line.split("\\|");
             if (p.length >= 4 && p[0].equals("FYPGROUP")) {
-                FYPGroup g = new FYPGroup(p[1], p[2], "");
+                // Format: FYPGROUP|groupId|title|supervisorId|memberStudentIds(comma-separated)|description
+                FYPGroup g = new FYPGroup(p[1], p[2], p.length > 5 ? p[5] : "");
                 Instructor inst = CampusRegistry.findInstructor(p[3]);
                 if (inst instanceof PermanentInstructor) {
                     g.assignSupervisor((PermanentInstructor) inst);
                     ((PermanentInstructor) inst).addSupervisedGroup(g);
+                }
+                if (p.length > 4 && !p[4].isBlank()) {
+                    for (String studentId : p[4].split(",")) {
+                        Student member = CampusRegistry.findStudent(studentId.trim());
+                        if (member != null) {
+                            g.addMember(member);
+                        } else {
+                            Logger.warn("InstructorService", "FYP group " + p[1] + ": unknown member " + studentId);
+                        }
+                    }
                 }
                 fypGroups.add(g);
             }
@@ -1218,10 +1192,16 @@ public class InstructorService {
 
     public void saveFYPGroups() {
         List<String> lines = new ArrayList<>();
-        lines.add("# Format: FYPGROUP|groupId|title|supervisorId");
+        lines.add("# Format: FYPGROUP|groupId|title|supervisorId|memberStudentIds(comma-separated)|description");
         for (FYPGroup g : fypGroups) {
             String sup = (g.getSupervisor() != null) ? g.getSupervisor().getTeacherId() : "null";
-            lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle() + "|" + sup);
+            List<String> memberIds = new ArrayList<>();
+            for (Student member : g.getMembers()) {
+                memberIds.add(member.getStudentId());
+            }
+            String description = g.getDescription() != null ? g.getDescription().replace("|", "/") : "";
+            lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle().replace("|", "/") + "|" + sup
+                    + "|" + String.join(",", memberIds) + "|" + description);
         }
         FileManager.writeAllLines(FYPGROUPS_FILE, lines);
         Logger.info("InstructorService", "Saved " + fypGroups.size() + " FYP groups to " + FYPGROUPS_FILE);

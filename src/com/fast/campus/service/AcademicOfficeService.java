@@ -865,41 +865,51 @@ public class AcademicOfficeService {
         FileManager.writeAllLines("data/courses.txt", lines);
     }
 
+    /**
+     * Reloads sections in the same format the app writes
+     * (SECTION|sectionId|courseCode|capacity|day|startTime|endTime|room|instructorId).
+     */
     public void loadSections() {
         sections.clear();
-        List<String> lines = FileManager.readLines("data/sections.txt");
-        for (String line : lines) {
-            if (line.startsWith("#") || line.trim().isEmpty()) continue;
-            String[] p = line.split("\\|");
-            if (p.length >= 8 && p[0].equals("SECTION")) {
-                Course c = CampusRegistry.findCourse(p[3]);
-                if (c == null) continue;
-                
-                com.fast.campus.enums.Day day = com.fast.campus.enums.Day.valueOf(p[4]);
-                Schedule s = new Schedule(day, p[5], p[6], p[7]);
-                Section sec = new Section(p[1], Integer.parseInt(p[2]), c, s);
-                if (p.length > 8 && !p[8].equals("null")) {
-                    Instructor inst = CampusRegistry.findInstructor(p[8]);
-                    if (inst != null) {
-                        sec.assignInstructor(inst);
-                        inst.addSection(sec);
-                    }
-                }
-                sections.add(sec);
-            }
+        for (Course course : courses) {
+            course.getSections().clear();
         }
+        loadSectionData();
+        restoreInstructorAssignments();
     }
 
+    /** Writes sections in the same format loadSectionData() reads. */
     public void saveSections() {
-        List<String> lines = new ArrayList<>();
-        lines.add("# Format: SECTION|sectionId|capacity|courseCode|day|startTime|endTime|room|instructorId");
-        for (Section s : sections) {
-            String inst = (s.getInstructor() != null) ? s.getInstructor().getTeacherId() : "null";
-            lines.add("SECTION|" + s.getSectionId() + "|" + s.getCapacity() + "|" + s.getCourse().getCourseCode() + "|" + 
-                      s.getSchedule().getDay() + "|" + s.getSchedule().getStartTime() + "|" + s.getSchedule().getEndTime() + "|" + 
-                      s.getSchedule().getRoom() + "|" + inst);
+        rewriteSectionsFile();
+    }
+
+    /**
+     * Re-links each section to its instructor (9th field of sections.txt).
+     * Must run after instructors are loaded (InstructorService), which happens after this
+     * service's constructor — so ConsoleUI calls it once all services exist.
+     */
+    public void restoreInstructorAssignments() {
+        int linked = 0;
+        for (String line : FileManager.readLines(SECTIONS_FILE)) {
+            String[] p = line.split("\\|");
+            if (p.length < 9 || !p[0].equals("SECTION")) {
+                continue;
+            }
+            String instructorId = p[8].trim();
+            if (instructorId.isEmpty() || instructorId.equals("NONE") || instructorId.equals("null")) {
+                continue;
+            }
+            Section section = findSectionById(p[1].trim());
+            Instructor instructor = CampusRegistry.findInstructor(instructorId);
+            if (section == null || instructor == null) {
+                Logger.warn("AcademicOfficeService", "Could not restore instructor " + instructorId
+                        + " for section " + p[1]);
+                continue;
+            }
+            section.assignInstructor(instructor); // also adds the section to the instructor
+            linked++;
         }
-        FileManager.writeAllLines("data/sections.txt", lines);
+        Logger.info("AcademicOfficeService", "Restored " + linked + " section-instructor assignment(s)");
     }
 
 }
