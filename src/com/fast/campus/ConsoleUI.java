@@ -10,6 +10,7 @@ import com.fast.campus.service.InstructorService;
 import com.fast.campus.service.StudentService;
 import com.fast.campus.util.Logger;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Scanner;
 
@@ -215,6 +216,7 @@ public class ConsoleUI {
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new PermanentInstructor(id, name, email, phone, tId));
+                        instructorService.saveInstructors();
                         System.out.println("Permanent Instructor created.");
                         Logger.info("Admin", "Created Permanent Instructor: " + tId);
                     } else if (um.equals("3")) {
@@ -224,6 +226,7 @@ public class ConsoleUI {
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new VisitingInstructor(id, name, email, phone, tId));
+                        instructorService.saveInstructors();
                         System.out.println("Visiting Instructor created.");
                         Logger.info("Admin", "Created Visiting Instructor: " + tId);
                     } else if (um.equals("4")) {
@@ -588,9 +591,7 @@ public class ConsoleUI {
                         System.out.println("Invalid student type or section not found.");
                     }
                 } else if (choice.equals("4")) {
-                    System.out.println("FYP Groups under supervision:");
-                    instructorService.getFYPGroupsBySupervisor(pInst).forEach(System.out::println);
-                    System.out.println("(Further FYP operations omitted for brevity)");
+                    fypMenu(pInst);
                 } else if (choice.equals("5")) {
                     break;
                 }
@@ -643,4 +644,76 @@ public class ConsoleUI {
             }
         }
     }
+
+    // --- FYP SUPERVISION MENU ---
+    private void fypMenu(PermanentInstructor pInst) {
+    while (true) {
+        System.out.println("\n--- FYP Supervision Menu ---");
+        System.out.println("1. View Supervised FYP Groups");
+        System.out.println("2. View FYP Group Details");
+        System.out.println("3. Schedule FYP Meeting");
+        System.out.println("4. Evaluate FYP Idea");
+        System.out.println("5. Provide FYP Feedback");
+        System.out.println("6. Back");
+        System.out.print("Enter choice: ");
+
+        String choice = scanner.nextLine();
+        try {
+            if (choice.equals("1")) {
+                List<FYPGroup> groups = instructorService.getFYPGroupsBySupervisor(pInst);
+                if (groups.isEmpty()) {
+                    System.out.println("No groups under supervision");
+                } else {
+                    System.out.println("\n=== Supervised FYP Groups ===");
+                    for (FYPGroup g : groups) {
+                        System.out.println("  - " + g.getGroupId() + ": " + g.getTitle());
+                    }
+                }
+            } else if (choice.equals("2")) {
+                System.out.print("Enter FYP Group ID: ");
+                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
+                if (group != null) {
+                    System.out.println("Title: " + group.getTitle());
+                    System.out.println("Members: " + group.getMembers().size());
+                    System.out.println("Meetings: " + group.getMeetings().size());
+                }
+            } else if (choice.equals("3")) {
+                System.out.print("Enter FYP Group ID: ");
+                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
+                if (group != null) {
+                    LocalDate date = promptDate("Meeting Date");
+                    System.out.print("Agenda: ");
+                    String agenda = scanner.nextLine();
+                    FYPMeeting meeting = new FYPMeeting("M" + System.currentTimeMillis(), date, agenda);
+                    instructorService.scheduleFYPMeeting(pInst, group, meeting);
+                    System.out.println("Meeting scheduled.");
+                }
+            } else if (choice.equals("4")) {
+                System.out.print("Enter FYP Group ID: ");
+                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
+                if (group != null) {
+                    System.out.print("Score (0-100): ");
+                    double score = Double.parseDouble(scanner.nextLine());
+                    System.out.print("Evaluation feedback: ");
+                    String feedback = scanner.nextLine();
+                    FYPEvaluation eval = new FYPEvaluation("E" + System.currentTimeMillis());
+                    instructorService.evaluateFYPIdea(pInst, group, eval, score, feedback);
+                    System.out.println("Idea evaluated.");
+                }
+            } else if (choice.equals("5")) {
+                System.out.print("Enter FYP Group ID: ");
+                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
+                if (group != null) {
+                    System.out.print("Feedback: ");
+                    instructorService.provideFYPFeedback(pInst, group, scanner.nextLine());
+                    System.out.println("Feedback provided.");
+                }
+            } else if (choice.equals("6")) {
+                break;
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+}
 }

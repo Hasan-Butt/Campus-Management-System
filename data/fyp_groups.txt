@@ -1,0 +1,4 @@
+# FYP Groups data file
+# Format: FYPGROUP|groupId|title|supervisorId
+FYPGROUP|FYP001|AI-Based Campus Management System|1122
+FYPGROUP|FYP002|Blockchain for Academic Records|1122

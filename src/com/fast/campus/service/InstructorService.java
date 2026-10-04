@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class InstructorService {
 
     private static final String INSTRUCTORS_FILE   = "data/instructors.txt";
-    private static final String FYPGROUPS_FILE     = "data/fypgroups.txt";
+    private static final String FYPGROUPS_FILE     = "data/fyp_groups.txt";
     private static final String FYPMEETINGS_FILE   = "data/fypmeetings.txt";
     private static final String FYPEVALUATIONS_FILE = "data/fyp_evaluations.txt";
     private static final String ATTENDANCE_FILE    = "data/attendance.txt";
@@ -47,11 +47,11 @@ public class InstructorService {
      * Constructor - loads existing data from persistence files
      */
     public InstructorService() {
-        loadInstructorData();
-        loadAttendanceData();
-        loadFYPGroupData();
-        loadFYPMeetingData();
-        loadFYPEvaluationData();
+        loadInstructors();
+        loadAttendance();
+        loadFYPGroups();
+        loadFYPMeetings();
+        loadFYPEvaluations();
     }
     
     // ================================================================
@@ -1199,7 +1199,7 @@ public class InstructorService {
 
     public void loadFYPGroups() {
         fypGroups.clear();
-        List<String> lines = FileManager.readLines("data/fyp_groups.txt");
+        List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
         for (String line : lines) {
             if (line.startsWith("#") || line.trim().isEmpty()) continue;
             String[] p = line.split("\\|");
@@ -1213,6 +1213,7 @@ public class InstructorService {
                 fypGroups.add(g);
             }
         }
+        Logger.info("InstructorService", "Loaded " + fypGroups.size() + " FYP groups from " + FYPGROUPS_FILE);
     }
 
     public void saveFYPGroups() {
@@ -1222,14 +1223,137 @@ public class InstructorService {
             String sup = (g.getSupervisor() != null) ? g.getSupervisor().getTeacherId() : "null";
             lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle() + "|" + sup);
         }
-        FileManager.writeAllLines("data/fyp_groups.txt", lines);
+        FileManager.writeAllLines(FYPGROUPS_FILE, lines);
+        Logger.info("InstructorService", "Saved " + fypGroups.size() + " FYP groups to " + FYPGROUPS_FILE);
     }
 
-    public void loadFYPMeetings() {}
-    public void saveFYPMeetings() {}
-    public void loadFYPEvaluations() {}
-    public void saveFYPEvaluations() {}
-    public void loadAttendance() {}
-    public void saveAttendance() {}
+    public void loadFYPMeetings() {
+        fypMeetings.clear();
+        List<String> lines = FileManager.readLines(FYPMEETINGS_FILE);
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 5 && p[0].equals("FYPMEETING")) {
+                // Format: FYPMEETING|meetingId|groupId|date|agenda|notes
+                FYPGroup group = getFYPGroupById(p[2]);
+                if (group != null) {
+                    LocalDate meetingDate = LocalDate.parse(p[3]);
+                    FYPMeeting meeting = new FYPMeeting(p[1], meetingDate, p[4]);
+                    if (p.length > 5 && !p[5].isEmpty()) {
+                        meeting.updateNotes(p[5]);
+                    }
+                    fypMeetings.add(meeting);
+                    group.addMeeting(meeting);
+                }
+            }
+        }
+        Logger.info("InstructorService", "Loaded " + fypMeetings.size() + " FYP meetings from " + FYPMEETINGS_FILE);
+    }
+
+    public void saveFYPMeetings() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: FYPMEETING|meetingId|groupId|date|agenda|notes");
+        for (FYPMeeting meeting : fypMeetings) {
+            // Find the group this meeting belongs to
+            String groupId = "UNKNOWN";
+            for (FYPGroup group : fypGroups) {
+                if (group.getMeetings().contains(meeting)) {
+                    groupId = group.getGroupId();
+                    break;
+                }
+            }
+            lines.add("FYPMEETING|" + meeting.getMeetingId() + "|" + groupId + "|" 
+                    + meeting.getMeetingDate().toString() + "|" 
+                    + (meeting.getAgenda() != null ? meeting.getAgenda() : "") + "|" 
+                    + (meeting.getNotes() != null ? meeting.getNotes() : ""));
+        }
+        FileManager.writeAllLines(FYPMEETINGS_FILE, lines);
+        Logger.info("InstructorService", "Saved " + fypMeetings.size() + " FYP meetings to " + FYPMEETINGS_FILE);
+    }
+
+    public void loadFYPEvaluations() {
+        fypEvaluations.clear();
+        List<String> lines = FileManager.readLines(FYPEVALUATIONS_FILE);
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 6 && p[0].equals("FYPEVALUATION")) {
+                // Format: FYPEVALUATION|evaluationId|groupId|instructorId|date|score|feedback
+                FYPGroup group = getFYPGroupById(p[2]);
+                if (group != null) {
+                    // Create evaluation with just the ID, then set the other fields
+                    FYPEvaluation evaluation = new FYPEvaluation(p[1]);
+                    double score = Double.parseDouble(p[5]);
+                    evaluation.evaluate(score); // This sets the score
+                    if (p.length > 6 && !p[6].isEmpty()) {
+                        evaluation.addFeedback(p[6]);
+                    }
+                    fypEvaluations.add(evaluation);
+                    group.addEvaluation(evaluation);
+                }
+            }
+        }
+        Logger.info("InstructorService", "Loaded " + fypEvaluations.size() + " FYP evaluations from " + FYPEVALUATIONS_FILE);
+    }
+
+    public void saveFYPEvaluations() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: FYPEVALUATION|evaluationId|groupId|instructorId|date|score|feedback");
+        for (FYPEvaluation eval : fypEvaluations) {
+            // Find the group this evaluation belongs to
+            String groupId = "UNKNOWN";
+            String instructorId = "UNKNOWN";
+            for (FYPGroup group : fypGroups) {
+                if (group.getEvaluations().contains(eval)) {
+                    groupId = group.getGroupId();
+                    if (group.getSupervisor() != null) {
+                        instructorId = group.getSupervisor().getTeacherId();
+                    }
+                    break;
+                }
+            }
+            lines.add("FYPEVALUATION|" + eval.getEvaluationId() + "|" + groupId + "|" 
+                    + instructorId + "|" 
+                    + eval.getEvaluationDate().toString() + "|" 
+                    + eval.getScore() + "|" 
+                    + (eval.getFeedback() != null ? eval.getFeedback() : ""));
+        }
+        FileManager.writeAllLines(FYPEVALUATIONS_FILE, lines);
+        Logger.info("InstructorService", "Saved " + fypEvaluations.size() + " FYP evaluations to " + FYPEVALUATIONS_FILE);
+    }
+
+    public void loadAttendance() {
+        attendanceRecords.clear();
+        List<String> lines = FileManager.readLines(ATTENDANCE_FILE);
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 5 && p[0].equals("ATTENDANCE")) {
+                // Format: ATTENDANCE|studentId|sectionId|date|status
+                Student student = CampusRegistry.findStudent(p[1]);
+                Section section = CampusRegistry.findSection(p[2]);
+                if (student != null && section != null) {
+                    LocalDate date = LocalDate.parse(p[3]);
+                    AttendanceStatus status = AttendanceStatus.valueOf(p[4]);
+                    Attendance attendance = new Attendance(student, section, date, status);
+                    attendanceRecords.add(attendance);
+                }
+            }
+        }
+        Logger.info("InstructorService", "Loaded " + attendanceRecords.size() + " attendance records from " + ATTENDANCE_FILE);
+    }
+
+    public void saveAttendance() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: ATTENDANCE|studentId|sectionId|date|status");
+        for (Attendance attendance : attendanceRecords) {
+            lines.add("ATTENDANCE|" + attendance.getStudent().getStudentId() + "|" 
+                    + attendance.getSection().getSectionId() + "|" 
+                    + attendance.getDate().toString() + "|" 
+                    + attendance.getStatus().name());
+        }
+        FileManager.writeAllLines(ATTENDANCE_FILE, lines);
+        Logger.info("InstructorService", "Saved " + attendanceRecords.size() + " attendance records to " + ATTENDANCE_FILE);
+    }
 
 }

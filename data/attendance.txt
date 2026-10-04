@@ -1,2 +1,4 @@
 # Attendance data file
 # Format: ATTENDANCE|studentId|sectionId|date|status
+ATTENDANCE|22I-3001|CS101-A|2026-10-03|PRESENT
+ATTENDANCE|23L-3022|CS101-A|2026-10-03|LATE
