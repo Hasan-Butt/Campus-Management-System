@@ -69,7 +69,8 @@ public class ConsoleUI {
             System.out.println("3. Create Section");
             System.out.println("4. Assign Instructor to Section");
             System.out.println("5. View/Process Academic Requests");
-            System.out.println("6. Back to Main Menu");
+            System.out.println("6. User Management");
+            System.out.println("7. Back to Main Menu");
             System.out.print("Enter choice: ");
 
             String choice = scanner.nextLine();
@@ -107,9 +108,59 @@ public class ConsoleUI {
                     }
                 } else if (choice.equals("5")) {
                     List<Request> reqs = studentService.getAllRequests();
+                    System.out.println("Sort by: 1. Priority 2. Date");
+                    String sort = scanner.nextLine();
+                    if (sort.equals("1")) {
+                        reqs.sort(new com.fast.campus.comparator.RequestPriorityComparator());
+                    } else if (sort.equals("2")) {
+                        reqs.sort(new com.fast.campus.comparator.RequestDateComparator());
+                    }
                     for (Request r : reqs) System.out.println(r);
                     System.out.println("Note: Processing logic goes here in real UI.");
                 } else if (choice.equals("6")) {
+                    System.out.println("1. Create Student");
+                    System.out.println("2. Create Permanent Instructor");
+                    System.out.println("3. Create Visiting Instructor");
+                    System.out.println("4. Promote Student to TA");
+                    System.out.print("Choice: ");
+                    String um = scanner.nextLine();
+                    if (um.equals("1")) {
+                        System.out.print("ID: "); String id = scanner.nextLine();
+                        System.out.print("Name: "); String name = scanner.nextLine();
+                        System.out.print("Email: "); String email = scanner.nextLine();
+                        System.out.print("Phone: "); String phone = scanner.nextLine();
+                        System.out.print("Student ID: "); String sId = scanner.nextLine();
+                        com.fast.campus.util.CampusRegistry.students.add(new NormalStudent(id, name, email, phone, sId));
+                        System.out.println("Student created.");
+                    } else if (um.equals("2")) {
+                        System.out.print("ID: "); String id = scanner.nextLine();
+                        System.out.print("Name: "); String name = scanner.nextLine();
+                        System.out.print("Email: "); String email = scanner.nextLine();
+                        System.out.print("Phone: "); String phone = scanner.nextLine();
+                        System.out.print("Teacher ID: "); String tId = scanner.nextLine();
+                        com.fast.campus.util.CampusRegistry.instructors.add(new PermanentInstructor(id, name, email, phone, tId));
+                        System.out.println("Permanent Instructor created.");
+                    } else if (um.equals("3")) {
+                        System.out.print("ID: "); String id = scanner.nextLine();
+                        System.out.print("Name: "); String name = scanner.nextLine();
+                        System.out.print("Email: "); String email = scanner.nextLine();
+                        System.out.print("Phone: "); String phone = scanner.nextLine();
+                        System.out.print("Teacher ID: "); String tId = scanner.nextLine();
+                        com.fast.campus.util.CampusRegistry.instructors.add(new VisitingInstructor(id, name, email, phone, tId));
+                        System.out.println("Visiting Instructor created.");
+                    } else if (um.equals("4")) {
+                        System.out.print("Student ID to promote: "); String sId = scanner.nextLine();
+                        Student s = studentService.findStudent(sId);
+                        if (s instanceof NormalStudent) {
+                            TeachingAssistant ta = new TeachingAssistant(s.getId(), s.getName(), s.getEmail(), s.getPhoneNumber(), s.getStudentId());
+                            com.fast.campus.util.CampusRegistry.students.remove(s);
+                            com.fast.campus.util.CampusRegistry.students.add(ta);
+                            System.out.println("Student promoted to TA successfully.");
+                        } else {
+                            System.out.println("Student not found or already a TA.");
+                        }
+                    }
+                } else if (choice.equals("7")) {
                     break;
                 }
             } catch (Exception e) {
@@ -176,9 +227,13 @@ public class ConsoleUI {
                     System.out.print("Enter Conflicting Section ID: ");
                     Section conflict = searchSection(scanner.nextLine());
                     if (current != null && conflict != null) {
-                        System.out.print("Enter description: ");
-                        studentService.submitCourseClashRequest(student, current, conflict, scanner.nextLine(), 1);
-                        System.out.println("Clash request submitted.");
+                        if (!current.hasClash(conflict)) {
+                            System.out.println("Validation Error: The selected sections do not have a schedule overlap. Request rejected.");
+                        } else {
+                            System.out.print("Enter description: ");
+                            studentService.submitCourseClashRequest(student, current, conflict, scanner.nextLine(), 1);
+                            System.out.println("Clash request submitted.");
+                        }
                     }
                 } else if (choice.equals("7")) {
                     break;
@@ -226,6 +281,7 @@ public class ConsoleUI {
                     Assignment asg = studentService.findAssignment(scanner.nextLine());
                     if (asg != null) {
                         List<Submission> subs = studentService.viewSubmissions(ta, asg);
+                        subs.sort(java.util.Comparator.comparing(Submission::getSubmissionDate));
                         for (Submission sub : subs) {
                             System.out.println(sub);
                             System.out.print("Enter marks (or press Enter to skip): ");
