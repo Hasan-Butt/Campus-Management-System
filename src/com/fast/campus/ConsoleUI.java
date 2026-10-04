@@ -34,6 +34,56 @@ public class ConsoleUI {
         return null;
     }
 
+    // --- Input helpers (re-ask instead of crashing on bad input) ---
+
+    private String prompt(String label) {
+        System.out.print(label);
+        return scanner.nextLine().trim();
+    }
+
+    private int promptInt(String label, int min, int max) {
+        while (true) {
+            String text = prompt(label);
+            try {
+                int value = Integer.parseInt(text);
+                if (value >= min && value <= max) return value;
+            } catch (NumberFormatException ignored) {
+                // fall through to the message below
+            }
+            System.out.println("Please enter a whole number from " + min + " to " + max + ".");
+        }
+    }
+
+    private double promptDouble(String label) {
+        while (true) {
+            try {
+                return Double.parseDouble(prompt(label));
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a number, e.g. 85 or 87.5.");
+            }
+        }
+    }
+
+    private java.time.LocalDate promptDate(String label) {
+        while (true) {
+            try {
+                return java.time.LocalDate.parse(prompt(label));
+            } catch (java.time.format.DateTimeParseException e) {
+                System.out.println("Please use the format YYYY-MM-DD, e.g. 2026-10-15.");
+            }
+        }
+    }
+
+    /** Prints a numbered heading line and each item, or a friendly message when empty. */
+    private void printList(String title, List<?> items, String emptyMessage) {
+        System.out.println("\n" + title);
+        if (items.isEmpty()) {
+            System.out.println("  " + emptyMessage);
+        } else {
+            for (Object item : items) System.out.println("  " + item);
+        }
+    }
+
     public void start() {
         Logger.info("System", "ConsoleUI Started");
         boolean running = true;
@@ -118,8 +168,29 @@ public class ConsoleUI {
                     } else if (sort.equals("2")) {
                         reqs.sort(new com.fast.campus.comparator.RequestDateComparator());
                     }
-                    for (Request r : reqs) System.out.println(r);
-                    System.out.println("Note: Processing logic goes here in real UI.");
+                    printList("Requests:", reqs, "No requests submitted.");
+                    String requestId = reqs.isEmpty() ? "" : prompt("Request ID to approve/reject (press Enter to skip): ");
+                    if (!requestId.isEmpty()) {
+                        Request selected = null;
+                        for (Request r : reqs) {
+                            if (r.getRequestId().equals(requestId)) selected = r;
+                        }
+                        if (selected == null) {
+                            System.out.println("Request not found.");
+                        } else {
+                            String decision = prompt("1. Approve  2. Reject: ");
+                            if (decision.equals("1")) {
+                                academicService.approveRequest(selected);
+                            } else if (decision.equals("2")) {
+                                academicService.rejectRequest(selected);
+                            } else {
+                                System.out.println("Invalid choice — request left unchanged.");
+                            }
+                            // AcademicOfficeService only changes the status in memory; requests.txt is saved here
+                            studentService.saveRequests();
+                            System.out.println("Now: " + selected);
+                        }
+                    }
                 } else if (choice.equals("6")) {
                     System.out.println("1. Create Student");
                     System.out.println("2. Create Permanent Instructor");
@@ -133,7 +204,8 @@ public class ConsoleUI {
                         System.out.print("Email: "); String email = scanner.nextLine();
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Student ID: "); String sId = scanner.nextLine();
-                        com.fast.campus.util.CampusRegistry.students.add(new NormalStudent(id, name, email, phone, sId));
+                        // Through StudentService so it is validated (unique ID) and saved to students.txt
+                        studentService.addStudent(new NormalStudent(id, name, email, phone, sId));
                         System.out.println("Student created.");
                         Logger.info("Admin", "Created Student: " + sId);
                     } else if (um.equals("2")) {
@@ -158,11 +230,16 @@ public class ConsoleUI {
                         System.out.print("Student ID to promote: "); String sId = scanner.nextLine();
                         Student s = studentService.findStudent(sId);
                         if (s instanceof NormalStudent) {
-                            TeachingAssistant ta = new TeachingAssistant(s.getId(), s.getName(), s.getEmail(), s.getPhoneNumber(), s.getStudentId());
-                            com.fast.campus.util.CampusRegistry.students.remove(s);
-                            com.fast.campus.util.CampusRegistry.students.add(ta);
-                            System.out.println("Student promoted to TA successfully.");
-                            Logger.info("Admin", "Promoted Student to TA: " + sId);
+                            System.out.print("Section ID the TA will assist: ");
+                            Section sec = searchSection(scanner.nextLine());
+                            if (sec == null) {
+                                System.out.println("Section not found.");
+                            } else {
+                                // Keeps the student's enrollments/requests and saves the change
+                                studentService.promoteToTA(s, sec);
+                                System.out.println("Student promoted to TA of " + sec.getSectionId() + ".");
+                                Logger.info("Admin", "Promoted Student to TA: " + sId);
+                            }
                         } else {
                             System.out.println("Student not found or already a TA.");
                         }
@@ -184,72 +261,136 @@ public class ConsoleUI {
 
         Logger.info(student.getStudentId(), "Logged in to Student menu");
         while (true) {
-            System.out.println("\n--- Student Menu (" + student.getName() + ") ---");
-            System.out.println("1. Browse Courses");
-            System.out.println("2. Register for Section");
-            System.out.println("3. View Registered Courses & Credit Hours");
-            System.out.println("4. View Assignments & Submit");
-            System.out.println("5. View Attendance");
-            System.out.println("6. Submit Course Clash Request");
-            System.out.println("7. Back to Main Menu");
-            System.out.print("Enter choice: ");
+            System.out.println("\n--- Student Menu (" + student.getName() + ", " + student.getStudentId()
+                    + " | " + student.getTotalCreditHours() + " credit hours) ---");
+            System.out.println(" 1. View Available Courses & Sections");
+            System.out.println(" 2. Register for a Section");
+            System.out.println(" 3. Drop a Course");
+            System.out.println(" 4. View Registered Courses & Credit Hours");
+            System.out.println(" 5. View Timetable");
+            System.out.println(" 6. View Assignments");
+            System.out.println(" 7. Submit an Assignment");
+            System.out.println(" 8. View Attendance & Percentage");
+            System.out.println(" 9. Submit Course Clash Request");
+            System.out.println("10. Submit Other Request (professor / classmate / other)");
+            System.out.println("11. View My Requests");
+            System.out.println("12. View My Submissions & Grades");
+            System.out.println(" 0. Back to Main Menu");
 
-            String choice = scanner.nextLine();
+            String choice = prompt("Enter choice: ");
             try {
-                if (choice.equals("1")) {
-                    academicService.getCourses().forEach(System.out::println);
-                } else if (choice.equals("2")) {
-                    System.out.print("Enter Section ID: ");
-                    Section section = searchSection(scanner.nextLine());
-                    if (section != null) {
+                switch (choice) {
+                    case "1": {
+                        System.out.println("\nAvailable courses and sections:");
+                        for (Course course : academicService.getCourses()) {
+                            System.out.println("  " + course);
+                            for (Section section : course.getSections()) {
+                                String when = section.getSchedule() != null
+                                        ? section.getSchedule().getScheduleInfo() : "schedule not set";
+                                System.out.println("      " + section.getSectionId() + " | " + when
+                                        + " | " + section.getAvailableSeats() + "/" + section.getCapacity() + " seats free");
+                            }
+                        }
+                        break;
+                    }
+                    case "2": {
+                        Section section = searchSection(prompt("Section ID to register for: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
                         studentService.registerCourse(student, section);
-                        System.out.println("Registered successfully.");
-                    } else {
-                        System.out.println("Section not found.");
+                        System.out.println("Registered for " + section.getSectionId()
+                                + ". Total credit hours: " + student.getTotalCreditHours());
+                        break;
                     }
-                } else if (choice.equals("3")) {
-                    student.getRegisteredCourses().forEach(System.out::println);
-                    System.out.println("Total Credit Hours: " + student.getTotalCreditHours());
-                } else if (choice.equals("4")) {
-                    studentService.viewAssignments(student).forEach(System.out::println);
-                    System.out.print("Enter Assignment ID to submit (or press Enter to skip): ");
-                    String asgId = scanner.nextLine();
-                    if (!asgId.isEmpty()) {
-                        Assignment asg = studentService.findAssignment(asgId);
-                        if (asg != null) {
-                            System.out.print("Enter your submission content: ");
-                            studentService.submitAssignment(student, asg, scanner.nextLine());
-                            System.out.println("Submitted successfully.");
+                    case "3": {
+                        printList("Your sections:", student.getEnrolledSections(), "You are not registered in any section.");
+                        if (student.getEnrolledSections().isEmpty()) break;
+                        Section section = searchSection(prompt("Section ID to drop: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        studentService.dropCourse(student, section);
+                        System.out.println("Dropped " + section.getSectionId()
+                                + ". Total credit hours: " + student.getTotalCreditHours());
+                        break;
+                    }
+                    case "4":
+                        printList("Registered courses:", student.viewCourses(), "None yet.");
+                        System.out.println("Total credit hours: " + student.calculateTotalCreditHours());
+                        break;
+                    case "5":
+                        printList("Timetable:", studentService.viewTimetable(student), "No classes scheduled.");
+                        break;
+                    case "6":
+                        printList("Your assignments (earliest deadline first):",
+                                studentService.viewAssignments(student), "No assignments for your sections.");
+                        break;
+                    case "7": {
+                        List<Assignment> mine = studentService.viewAssignments(student);
+                        printList("Your assignments:", mine, "No assignments for your sections.");
+                        if (mine.isEmpty()) break;
+                        Assignment assignment = studentService.findAssignment(prompt("Assignment ID to submit: "));
+                        if (assignment == null) { System.out.println("Assignment not found."); break; }
+                        if (assignment.isDeadlinePassed()) {
+                            System.out.println("Note: the deadline has passed — this will be recorded as LATE.");
                         }
+                        Submission submission = studentService.submitAssignment(student, assignment,
+                                prompt("Your submission (text or link): "));
+                        System.out.println("Submitted: " + submission);
+                        break;
                     }
-                } else if (choice.equals("5")) {
-                    System.out.print("Enter Section ID: ");
-                    Section sec = searchSection(scanner.nextLine());
-                    if (sec != null) {
-                        studentService.viewAttendance(student, sec).forEach(System.out::println);
-                        System.out.println("Attendance %: " + studentService.viewAttendancePercentage(student, sec));
+                    case "8": {
+                        printList("Your sections:", student.getEnrolledSections(), "You are not registered in any section.");
+                        if (student.getEnrolledSections().isEmpty()) break;
+                        Section section = searchSection(prompt("Section ID: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        printList("Attendance for " + section.getSectionId() + ":",
+                                studentService.viewAttendance(student, section), "No attendance marked yet.");
+                        System.out.printf("Attendance percentage: %.1f%%%n",
+                                studentService.viewAttendancePercentage(student, section));
+                        break;
                     }
-                } else if (choice.equals("6")) {
-                    System.out.print("Enter Current Section ID: ");
-                    Section current = searchSection(scanner.nextLine());
-                    System.out.print("Enter Conflicting Section ID: ");
-                    Section conflict = searchSection(scanner.nextLine());
-                    if (current != null && conflict != null) {
-                        if (!current.hasClash(conflict)) {
-                            System.out.println("Validation Error: The selected sections do not have a schedule overlap. Request rejected.");
-                        } else {
-                            System.out.print("Enter description: ");
-                            studentService.submitCourseClashRequest(student, current, conflict, scanner.nextLine(), 1);
-                            System.out.println("Clash request submitted.");
+                    case "9": {
+                        Section current = searchSection(prompt("Section you are registered in: "));
+                        Section wanted = searchSection(prompt("Section you want (that clashes): "));
+                        if (current == null || wanted == null) { System.out.println("Section not found."); break; }
+                        String description = prompt("Describe your request: ");
+                        int priority = promptInt("Priority (1 = low ... 5 = urgent): ", 1, 5);
+                        Request request = studentService.submitCourseClashRequest(student, current, wanted, description, priority);
+                        System.out.println("Submitted: " + request);
+                        break;
+                    }
+                    case "10": {
+                        RequestCategory[] categories = RequestCategory.values();
+                        for (int i = 0; i < categories.length; i++) {
+                            System.out.println("  " + (i + 1) + ". " + categories[i]);
                         }
+                        RequestCategory category = categories[promptInt("Category: ", 1, categories.length) - 1];
+                        String description = prompt("Describe your request: ");
+                        int priority = promptInt("Priority (1 = low ... 5 = urgent): ", 1, 5);
+                        Request request = studentService.submitGenericRequest(student, category, description, priority);
+                        System.out.println("Submitted: " + request);
+                        break;
                     }
-                } else if (choice.equals("7")) {
-                    break;
+                    case "11":
+                        printList("Your requests (oldest first):", studentService.viewRequests(student), "No requests yet.");
+                        break;
+                    case "12": {
+                        List<Submission> mine = studentService.viewMySubmissions(student);
+                        System.out.println("\nYour submissions (newest first):");
+                        if (mine.isEmpty()) System.out.println("  You haven't submitted anything yet.");
+                        for (Submission submission : mine) {
+                            System.out.println("  " + submission.getAssignment().getTitle() + " — " + submission);
+                        }
+                        break;
+                    }
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
                 }
             } catch (CampusException e) {
-                System.out.println("Campus Error: " + e.getMessage());
+                System.out.println("Could not complete: " + e.getMessage());
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error(student.getStudentId(), "Unexpected error in Student menu: " + e);
             }
         }
     }
@@ -263,55 +404,142 @@ public class ConsoleUI {
 
         Logger.info(ta.getStudentId(), "Logged in to TA menu");
         while (true) {
-            System.out.println("\n--- TA Menu (" + ta.getName() + ") ---");
-            System.out.println("1. View Assigned Section & Students");
-            System.out.println("2. Create Assignment");
-            System.out.println("3. Evaluate Submissions");
-            System.out.println("4. Back to Main Menu");
-            System.out.print("Enter choice: ");
+            Section section = ta.getAssignedSection();
+            System.out.println("\n--- TA Menu (" + ta.getName() + ", " + ta.getStudentId() + " | section "
+                    + (section != null ? section.getSectionId() : "none assigned") + ") ---");
+            System.out.println(" 1. View Assigned Section");
+            System.out.println(" 2. View Enrolled Students");
+            System.out.println(" 3. Create Assignment");
+            System.out.println(" 4. View Section Assignments");
+            System.out.println(" 5. View Submissions");
+            System.out.println(" 6. Check Late Submissions");
+            System.out.println(" 7. Evaluate a Submission (assign marks)");
+            System.out.println(" 8. Give Feedback on a Submission");
+            System.out.println(" 9. Grading Progress");
+            System.out.println(" 0. Back to Main Menu");
 
-            String choice = scanner.nextLine();
+            String choice = prompt("Enter choice: ");
             try {
-                if (choice.equals("1")) {
-                    System.out.println("Assigned Section: " + (ta.getAssignedSection() != null ? ta.getAssignedSection().getSectionId() : "None"));
-                    if (ta.getAssignedSection() != null) {
-                        System.out.println("Enrolled Students:");
-                        ta.getAssignedSection().getEnrolledStudents().forEach(System.out::println);
+                if (section == null && !choice.equals("0")) {
+                    System.out.println("You have no assigned section yet — ask a Permanent Instructor or the Admin to assign you.");
+                    continue;
+                }
+                switch (choice) {
+                    case "1": {
+                        String when = section.getSchedule() != null ? section.getSchedule().getScheduleInfo() : "schedule not set";
+                        System.out.println("\nAssigned section: " + section);
+                        System.out.println("  Course: " + section.getCourse());
+                        System.out.println("  Schedule: " + when);
+                        System.out.println("  Instructor: " + (section.getInstructor() != null ? section.getInstructor().getName() : "not assigned"));
+                        break;
                     }
-                } else if (choice.equals("2")) {
-                    System.out.print("Title: "); String title = scanner.nextLine();
-                    System.out.print("Description: "); String desc = scanner.nextLine();
-                    System.out.print("Deadline (YYYY-MM-DD): "); String date = scanner.nextLine();
-                    System.out.print("Total Marks: "); double marks = Double.parseDouble(scanner.nextLine());
-                    studentService.createAssignment(ta, title, desc, java.time.LocalDate.parse(date), marks);
-                    System.out.println("Assignment created.");
-                } else if (choice.equals("3")) {
-                    System.out.print("Enter Assignment ID to evaluate: ");
-                    Assignment asg = studentService.findAssignment(scanner.nextLine());
-                    if (asg != null) {
-                        List<Submission> subs = studentService.viewSubmissions(ta, asg);
-                        subs.sort(java.util.Comparator.comparing(Submission::getSubmissionDate));
-                        for (Submission sub : subs) {
-                            System.out.println(sub);
-                            System.out.print("Enter marks (or press Enter to skip): ");
-                            String m = scanner.nextLine();
-                            if (!m.isEmpty()) {
-                                studentService.evaluateSubmission(ta, sub, Double.parseDouble(m));
-                                System.out.print("Enter feedback: ");
-                                studentService.giveFeedback(ta, sub, scanner.nextLine());
-                                System.out.println("Evaluation saved.");
-                            }
+                    case "2":
+                        printList("Students enrolled in " + section.getSectionId() + ":",
+                                section.getEnrolledStudents(), "No students enrolled yet.");
+                        break;
+                    case "3": {
+                        String title = prompt("Title: ");
+                        String description = prompt("Description: ");
+                        java.time.LocalDate deadline = promptDate("Deadline (YYYY-MM-DD): ");
+                        double totalMarks = promptDouble("Total marks: ");
+                        Assignment assignment = studentService.createAssignment(ta, title, description, deadline, totalMarks);
+                        System.out.println("Created: " + assignment);
+                        break;
+                    }
+                    case "4":
+                        printList("Assignments for " + section.getSectionId() + ":",
+                                sectionAssignments(section), "No assignments yet.");
+                        break;
+                    case "5": {
+                        Assignment assignment = chooseAssignment(section);
+                        if (assignment == null) break;
+                        printList("Submissions for " + assignment.getTitle() + ":",
+                                studentService.viewSubmissions(ta, assignment), "No submissions yet.");
+                        break;
+                    }
+                    case "6": {
+                        Assignment assignment = chooseAssignment(section);
+                        if (assignment == null) break;
+                        printList("Late submissions for " + assignment.getTitle() + ":",
+                                studentService.checkLateSubmissions(ta, assignment), "No late submissions.");
+                        break;
+                    }
+                    case "7": {
+                        Submission submission = chooseSubmission(ta, section);
+                        if (submission == null) break;
+                        double marks = promptDouble("Marks (0 - " + submission.getAssignment().getTotalMarks() + "): ");
+                        studentService.evaluateSubmission(ta, submission, marks);
+                        String comments = prompt("Feedback (press Enter to skip): ");
+                        if (!comments.isEmpty()) {
+                            studentService.giveFeedback(ta, submission, comments);
                         }
+                        System.out.println("Saved: " + submission);
+                        break;
                     }
-                } else if (choice.equals("4")) {
-                    break;
+                    case "8": {
+                        Submission submission = chooseSubmission(ta, section);
+                        if (submission == null) break;
+                        studentService.giveFeedback(ta, submission, prompt("Feedback: "));
+                        System.out.println("Saved: " + submission);
+                        break;
+                    }
+                    case "9":
+                        System.out.println("\nGrading progress for your assignments:");
+                        if (ta.getCreatedAssignments().isEmpty()) {
+                            System.out.println("  You haven't created any assignments yet.");
+                        }
+                        ta.evaluate();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
                 }
             } catch (CampusException e) {
-                System.out.println("Campus Error: " + e.getMessage());
+                System.out.println("Could not complete: " + e.getMessage());
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error(ta.getStudentId(), "Unexpected error in TA menu: " + e);
             }
         }
+    }
+
+    // --- TA menu helpers ---
+
+    private List<Assignment> sectionAssignments(Section section) {
+        List<Assignment> result = new java.util.ArrayList<>();
+        for (Assignment assignment : studentService.getAssignments()) {
+            if (assignment.getSection() == section) result.add(assignment);
+        }
+        return result;
+    }
+
+    /** Lists the section's assignments and asks for one; returns null if none or not found. */
+    private Assignment chooseAssignment(Section section) {
+        List<Assignment> assignments = sectionAssignments(section);
+        printList("Assignments for " + section.getSectionId() + ":", assignments, "No assignments yet.");
+        if (assignments.isEmpty()) return null;
+        Assignment assignment = studentService.findAssignment(prompt("Assignment ID: "));
+        if (assignment == null || !assignments.contains(assignment)) {
+            System.out.println("Assignment not found in your section.");
+            return null;
+        }
+        return assignment;
+    }
+
+    /** Asks for an assignment, lists its submissions and asks for one; returns null if none or not found. */
+    private Submission chooseSubmission(TeachingAssistant ta, Section section) throws CampusException {
+        Assignment assignment = chooseAssignment(section);
+        if (assignment == null) return null;
+        List<Submission> submissions = studentService.viewSubmissions(ta, assignment);
+        printList("Submissions for " + assignment.getTitle() + ":", submissions, "No submissions yet.");
+        if (submissions.isEmpty()) return null;
+        String id = prompt("Submission ID: ");
+        for (Submission submission : submissions) {
+            if (submission.getSubmissionId().equals(id)) return submission;
+        }
+        System.out.println("Submission not found.");
+        return null;
     }
 
     // --- PERMANENT INSTRUCTOR MENU ---
@@ -353,7 +581,8 @@ public class ConsoleUI {
                     System.out.print("Enter Section ID: ");
                     Section sec = searchSection(scanner.nextLine());
                     if (st instanceof NormalStudent && sec != null) {
-                        instructorService.assignTA(pInst, (NormalStudent) st, sec);
+                        instructorService.assignTA(pInst, (NormalStudent) st, sec); // permission check + audit record
+                        studentService.promoteToTA(st, sec); // replace the student with the TA in the registry and save
                         System.out.println("TA Assigned successfully.");
                     } else {
                         System.out.println("Invalid student type or section not found.");

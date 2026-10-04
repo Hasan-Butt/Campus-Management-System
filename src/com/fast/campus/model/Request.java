@@ -47,4 +47,9 @@ public abstract class Request {
     public int getPriority()              { return priority; }
 
     public void setStatus(RequestStatus status) { this.status = status; }
+
+    @Override
+    public String toString() {
+        return getDetails() + " | " + status + " | priority " + priority + " | " + requestDate;
+    }
 }
