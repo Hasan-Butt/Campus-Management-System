@@ -6,10 +6,10 @@ package com.fast.campus.model;
  */
 public abstract class Person {
 
-    protected String id;
-    protected String name;
-    protected String email;
-    protected String phoneNumber;
+    private String id;
+    private String name;
+    private String email;
+    private String phoneNumber;
 
     public Person(String id, String name, String email, String phoneNumber) {
         this.id = id;

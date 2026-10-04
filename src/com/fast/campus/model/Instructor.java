@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
  */
 public abstract class Instructor extends Person {
 
-    protected String teacherId;
-    protected List<Section> assignedSections;
+    private String teacherId;
+    private List<Section> assignedSections;
 
     public Instructor(String id, String name, String email,
                       String phoneNumber, String teacherId) {
