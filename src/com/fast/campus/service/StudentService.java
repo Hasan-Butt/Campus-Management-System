@@ -11,9 +11,11 @@ import com.fast.campus.enums.SubmissionStatus;
 import com.fast.campus.exception.AssessmentException;
 import com.fast.campus.exception.CampusException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.exception.InvalidRequestException;
 import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.exception.UserException;
+import com.fast.campus.exception.InvalidUserException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
@@ -82,10 +84,10 @@ public class StudentService {
 
     public void addStudent(Student student) throws UserException {
         if (student == null || student.getStudentId() == null || student.getStudentId().isBlank()) {
-            throw new UserException("Student must have a student ID");
+            throw new InvalidUserException("Student must have a student ID");
         }
         if (findStudent(student.getStudentId()) != null) {
-            throw new UserException("Student " + student.getStudentId() + " already exists");
+            throw new InvalidUserException("Student " + student.getStudentId() + " already exists");
         }
         students.add(student);
         saveStudents();
@@ -113,10 +115,10 @@ public class StudentService {
      */
     public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
         if (!(student instanceof NormalStudent)) {
-            throw new UserException("Only a normal student can be promoted to TA");
+            throw new InvalidUserException("Only a normal student can be promoted to TA");
         }
         if (section == null) {
-            throw new CourseException("Section cannot be empty");
+            throw new InvalidCourseOperationException("Section cannot be empty");
         }
         TeachingAssistant ta = new TeachingAssistant((NormalStudent) student);
 

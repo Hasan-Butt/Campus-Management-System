@@ -1,9 +1,9 @@
 package com.fast.campus.exception;
 
 /**
- * Thrown when an assessment-related operation fails.
+ * Abstract base (UML) — thrown via a concrete subclass when an assessment-related operation fails.
  */
-public class AssessmentException extends CampusException {
+public abstract class AssessmentException extends CampusException {
 
     public AssessmentException(String message) {
         super(message);

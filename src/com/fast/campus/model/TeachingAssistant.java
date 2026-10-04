@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fast.campus.exception.AssessmentException;
+import com.fast.campus.exception.InvalidAssessmentException;
 import com.fast.campus.exception.UnauthorizedActionException;
 
 /**
@@ -70,13 +71,13 @@ public class TeachingAssistant extends Student implements Evaluator {
             throw new UnauthorizedActionException(getName(), "create assignment " + title);
         }
         if (title == null || title.isBlank()) {
-            throw new AssessmentException("Assignment title cannot be empty");
+            throw new InvalidAssessmentException("Assignment title cannot be empty");
         }
         if (totalMarks <= 0) {
-            throw new AssessmentException("Total marks must be greater than 0");
+            throw new InvalidAssessmentException("Total marks must be greater than 0");
         }
         if (deadline == null || deadline.isBefore(LocalDate.now())) {
-            throw new AssessmentException("Deadline cannot be in the past");
+            throw new InvalidAssessmentException("Deadline cannot be in the past");
         }
         String assignmentId = "A-" + System.currentTimeMillis();
         Assignment assignment = new Assignment(assignmentId, title, description, deadline, totalMarks, assignedSection, this);
@@ -103,7 +104,7 @@ public class TeachingAssistant extends Student implements Evaluator {
     public void evaluateSubmission(Submission submission, double marks) throws UnauthorizedActionException, AssessmentException {
         checkOwnSection(submission.getAssignment(), "evaluate submission " + submission.getSubmissionId());
         if (marks < 0 || marks > submission.getAssignment().getTotalMarks()) {
-            throw new AssessmentException("Marks must be between 0 and " + submission.getAssignment().getTotalMarks());
+            throw new InvalidAssessmentException("Marks must be between 0 and " + submission.getAssignment().getTotalMarks());
         }
         submission.assignMarks(marks);
     }

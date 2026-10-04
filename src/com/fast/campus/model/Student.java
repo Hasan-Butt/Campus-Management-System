@@ -1,7 +1,9 @@
 package com.fast.campus.model;
 
 import com.fast.campus.exception.AssessmentException;
+import com.fast.campus.exception.InvalidAssessmentException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.exception.InvalidRequestException;
 import com.fast.campus.exception.UnauthorizedActionException;
 
@@ -40,13 +42,13 @@ public abstract class Student extends Person {
 
     public void register(Section section) throws CourseException {
         if (section == null) {
-            throw new CourseException("Section cannot be empty");
+            throw new InvalidCourseOperationException("Section cannot be empty");
         }
         if (enrolledSections.contains(section)) {
-            throw new CourseException("Already registered in section " + section.getSectionId());
+            throw new InvalidCourseOperationException("Already registered in section " + section.getSectionId());
         }
         if (section.getCourse() != null && registeredCourses.contains(section.getCourse())) {
-            throw new CourseException("Already registered for course " + section.getCourse().getCourseCode());
+            throw new InvalidCourseOperationException("Already registered for course " + section.getCourse().getCourseCode());
         }
         section.enroll(this); // checks capacity and timetable clash, then links student <-> section
         calculateTotalCreditHours();
@@ -54,7 +56,7 @@ public abstract class Student extends Person {
 
     public void drop(Section section) throws CourseException {
         if (section == null || !enrolledSections.contains(section)) {
-            throw new CourseException("Not registered in this section");
+            throw new InvalidCourseOperationException("Not registered in this section");
         }
         section.drop(this); // cancels the enrollment and unlinks the section
         registeredCourses.remove(section.getCourse());
@@ -93,7 +95,7 @@ public abstract class Student extends Person {
             throw new UnauthorizedActionException(getName(), "submit an assignment of a section they are not enrolled in");
         }
         if (content == null || content.isBlank()) {
-            throw new AssessmentException("Submission content cannot be empty");
+            throw new InvalidAssessmentException("Submission content cannot be empty");
         }
         Submission submission = new Submission("S-" + System.currentTimeMillis(), assignment, this, content);
         submission.submit(); // SUBMITTED, or LATE if after the deadline (late work is accepted)

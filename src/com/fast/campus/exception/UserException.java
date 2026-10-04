@@ -1,9 +1,9 @@
 package com.fast.campus.exception;
 
 /**
- * Thrown when a user-related operation fails.
+ * Abstract base (UML) — thrown via a concrete subclass when a user-related operation fails.
  */
-public class UserException extends CampusException {
+public abstract class UserException extends CampusException {
 
     public UserException(String message) {
         super(message);
