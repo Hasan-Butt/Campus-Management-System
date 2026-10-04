@@ -6,7 +6,7 @@ package com.fast.campus.model;
  */
 public abstract class Administrator extends Person {
 
-    protected String adminId;
+    private String adminId;
 
     public Administrator(String id, String name, String email, String phoneNumber, String adminId) {
         super(id, name, email, phoneNumber);
