@@ -4,6 +4,7 @@ import com.fast.campus.comparator.AssignmentDeadlineComparator;
 import com.fast.campus.comparator.RequestDateComparator;
 import com.fast.campus.comparator.RequestPriorityComparator;
 import com.fast.campus.enums.AttendanceStatus;
+import com.fast.campus.enums.EnrollmentStatus;
 import com.fast.campus.enums.RequestCategory;
 import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.enums.SubmissionStatus;
@@ -100,7 +101,7 @@ public class StudentService {
     }
 
     public List<Student> getStudents() {
-        return students;
+        return new ArrayList<>(students);
     }
 
     // ================================================================
@@ -315,10 +316,11 @@ public class StudentService {
     }
 
     private void loadEnrollments() {
-        int loaded = 0;
+        int active = 0;
+        int dropped = 0;
         for (String line : FileManager.readLines(ENROLLMENTS_FILE)) {
             String[] p = line.split("\\|", -1);
-            if (p.length < 6 || !p[0].equals("ENROLLMENT") || !p[5].equals("ACTIVE")) {
+            if (p.length < 6 || !p[0].equals("ENROLLMENT")) {
                 continue;
             }
             Student student = findStudent(p[2]);
@@ -327,19 +329,39 @@ public class StudentService {
                 Logger.warn("StudentService", "Skipping enrollment with unknown student/section: " + line);
                 continue;
             }
+
+            EnrollmentStatus status;
             try {
-                section.enroll(new Enrollment(p[1], student, section, LocalDate.parse(p[4])));
-                // Section.enroll(Enrollment) doesn't record the course, so add it here
-                if (section.getCourse() != null && !student.getRegisteredCourses().contains(section.getCourse())) {
-                    student.getRegisteredCourses().add(section.getCourse());
+                status = EnrollmentStatus.valueOf(p[5]);
+            } catch (IllegalArgumentException ex) {
+                Logger.warn("StudentService", "Unknown enrollment status '" + p[5] + "', skipping: " + line);
+                continue;
+            }
+
+            if (status == EnrollmentStatus.ACTIVE) {
+                try {
+                    section.enroll(new Enrollment(p[1], student, section, LocalDate.parse(p[4])));
+                    // Section.enroll(Enrollment) doesn't record the course, so add it here
+                    if (section.getCourse() != null && !student.getRegisteredCourses().contains(section.getCourse())) {
+                        student.getRegisteredCourses().add(section.getCourse());
+                    }
+                    student.calculateTotalCreditHours();
+                    active++;
+                } catch (CourseException e) {
+                    Logger.error("StudentService", "Could not restore enrollment " + p[1] + ": " + e.getMessage());
                 }
-                student.calculateTotalCreditHours();
-                loaded++;
-            } catch (CourseException e) {
-                Logger.error("StudentService", "Could not restore enrollment " + p[1] + ": " + e.getMessage());
+            } else {
+                // DROPPED (or any future non-ACTIVE status): restore history without
+                // re-entering the section's capacity count or clash checks.
+                Enrollment enrollment = new Enrollment(p[1], student, section, LocalDate.parse(p[4]));
+                enrollment.setStatus(status);
+                if (!student.getEnrollments().contains(enrollment)) {
+                    student.getEnrollments().add(enrollment);
+                }
+                dropped++;
             }
         }
-        Logger.info("StudentService", "Loaded " + loaded + " enrollment(s) from file");
+        Logger.info("StudentService", "Loaded " + active + " active and " + dropped + " dropped enrollment(s) from file");
     }
 
     // ================================================================
