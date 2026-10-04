@@ -1,32 +1,22 @@
 package com.fast.campus.model;
 
 /**
- * Abstract base class for entities that can evaluate/grade work.
- * 
+ * Contract for anyone who can evaluate/grade work (UML: «interface» Evaluator).
+ *
  * <p>Owner: Saim</p>
- * <p>This interface defines the contract for evaluation behavior.
- * Implementing classes include PermanentInstructor (for FYP evaluation)
- * and potentially TeachingAssistant (for assignment grading).</p>
+ * <p>Implemented by PermanentInstructor (FYP evaluation) and TeachingAssistant
+ * (assignment grading). It is an interface rather than an abstract class because
+ * TeachingAssistant already extends Student, and a Java class can extend only one
+ * class but implement many interfaces.</p>
  */
-public abstract class Evaluator {
+public interface Evaluator {
 
-    /**
-     * Performs an evaluation.
-     * The specific evaluation logic is implemented by subclasses.
-     * 
-     * <p>Examples:
-     * - PermanentInstructor evaluates FYP projects with scores and feedback
-     * - TeachingAssistant evaluates assignment submissions with marks and comments
-     * </p>
-     */
-    public abstract void evaluate();
-    
-    /**
-     * Gets the evaluator's unique identifier.
-     * @return the evaluator's ID
-     */
-    public abstract String getEvaluatorId();
-    
-   // return evaluator name
-    public abstract String getEvaluatorName();
+    /** Performs this evaluator's evaluation work (meaning depends on the role). */
+    void evaluate();
+
+    /** Unique ID of the evaluator (used when saving who gave feedback). */
+    String getEvaluatorId();
+
+    /** Display name of the evaluator. */
+    String getEvaluatorName();
 }

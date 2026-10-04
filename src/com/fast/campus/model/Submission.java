@@ -20,12 +20,18 @@ public class Submission {
     private SubmissionStatus status;
 
     public Submission(String submissionId, Assignment assignment, Student student, String content) {
+        this(submissionId, assignment, student, LocalDate.now(), content, 0, null, SubmissionStatus.PENDING);
+    }
+
+    public Submission(String submissionId, Assignment assignment, Student student, LocalDate submissionDate, String content, double marks, Feedback feedback, SubmissionStatus status) {
         this.submissionId = submissionId;
         this.assignment = assignment;
         this.student = student;
+        this.submissionDate = submissionDate;
         this.content = content;
-        this.submissionDate = LocalDate.now();
-        this.status = SubmissionStatus.PENDING;
+        this.marks = marks;
+        this.feedback = feedback;
+        this.status = status;
     }
 
     // --- Domain operations ---

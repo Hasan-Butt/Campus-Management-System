@@ -1,5 +1,6 @@
 package com.fast.campus.util;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -43,6 +44,8 @@ public class Logger {
     }
 
     private static void writeToFile(String entry) {
+        // logs/ is git-ignored, so it doesn't exist on a fresh clone — create it if needed
+        new File(LOG_FILE).getParentFile().mkdirs();
         try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE, true))) {
             pw.println(entry);
         } catch (IOException e) {

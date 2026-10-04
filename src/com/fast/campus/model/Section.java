@@ -147,12 +147,18 @@ public class Section {
     }
 
     public void assignTA(TeachingAssistant ta) {
+        if (this.teachingAssistant != null && this.teachingAssistant != ta) {
+            this.teachingAssistant.setAssignedSection(null); // previous TA no longer has this section
+        }
         this.teachingAssistant = ta;
+        if (ta != null) {
+            ta.setAssignedSection(this); // the TA must know its section to create/grade assignments
+        }
     }
 
     public void assignTA(NormalStudent student) {
         if (student != null) {
-            this.teachingAssistant = new TeachingAssistant(student);
+            assignTA(new TeachingAssistant(student));
         }
     }
 

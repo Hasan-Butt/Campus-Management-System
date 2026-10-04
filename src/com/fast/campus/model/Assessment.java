@@ -9,11 +9,11 @@ import java.time.LocalDate;
  */
 public abstract class Assessment {
 
-    protected String id;
-    protected String title;
-    protected String description;
-    protected LocalDate deadline;
-    protected double totalMarks;
+    private String id;
+    private String title;
+    private String description;
+    private LocalDate deadline;
+    private double totalMarks;
 
     public Assessment(String id, String title, String description,
                       LocalDate deadline, double totalMarks) {
