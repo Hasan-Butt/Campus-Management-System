@@ -27,7 +27,12 @@ public class Assignment extends Assessment {
     // --- Domain operations ---
 
     public void addSubmission(Submission submission) {
-        submissions.add(submission);
+        if (submission != null && !submissions.contains(submission)) {
+            submissions.add(submission);
+            if (submission.getAssignment() != this) {
+                submission.setAssignment(this);
+            }
+        }
     }
 
     public List<Submission> getSubmissions() {

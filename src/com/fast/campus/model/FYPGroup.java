@@ -41,6 +41,9 @@ public class FYPGroup {
 
     public void assignSupervisor(PermanentInstructor supervisor) {
         this.supervisor = supervisor;
+        if (supervisor != null && !supervisor.getSupervisedGroups().contains(this)) {
+            supervisor.addSupervisedGroup(this);
+        }
     }
 
     public void addMeeting(FYPMeeting meeting) {

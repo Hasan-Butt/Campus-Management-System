@@ -7,6 +7,7 @@ import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
+import com.fast.campus.util.CampusRegistry;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -36,11 +37,11 @@ public class InstructorService {
     private static final String ATTENDANCE_FILE    = "data/attendance.txt";
     
     // In-memory storage for runtime operations
-    private List<Instructor> instructors = new ArrayList<>();
-    private List<FYPGroup> fypGroups = new ArrayList<>();
-    private List<FYPMeeting> fypMeetings = new ArrayList<>();
-    private List<FYPEvaluation> fypEvaluations = new ArrayList<>();
-    private List<Attendance> attendanceRecords = new ArrayList<>();
+    private List<Instructor> instructors = CampusRegistry.instructors;
+    private List<FYPGroup> fypGroups = CampusRegistry.fypGroups;
+    private List<FYPMeeting> fypMeetings = CampusRegistry.fypMeetings;
+    private List<FYPEvaluation> fypEvaluations = CampusRegistry.fypEvaluations;
+    private List<Attendance> attendanceRecords = CampusRegistry.attendanceRecords;
 
     /**
      * Constructor - loads existing data from persistence files
@@ -61,7 +62,7 @@ public class InstructorService {
      * Load instructor records from file on initialization.
      * Format: INSTRUCTOR|teacherId|name|email|phone|type
      */
-    private void loadInstructorData() {
+    public void loadInstructorData() {
         List<String> lines = FileManager.readLines(INSTRUCTORS_FILE);
         // Note: Full reconstruction would require re-creating Instructor objects
         // For now, we log the count. Full implementation would parse and instantiate.
@@ -72,7 +73,7 @@ public class InstructorService {
      * Load attendance records from file on initialization.
      * Format: ATTENDANCE|studentId|sectionId|date|status
      */
-    private void loadAttendanceData() {
+    public void loadAttendanceData() {
         List<String> lines = FileManager.readLines(ATTENDANCE_FILE);
         // Note: Full reconstruction would require Student/Section references
         Logger.info("InstructorService", "Loaded " + lines.size() + " attendance records");
@@ -82,7 +83,7 @@ public class InstructorService {
      * Load FYP groups from file on initialization.
      * Format: FYPGROUP|groupId|title|description|supervisorId
      */
-    private void loadFYPGroupData() {
+    public void loadFYPGroupData() {
         List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
         Logger.info("InstructorService", "Loaded " + lines.size() + " FYP groups");
     }
@@ -91,7 +92,7 @@ public class InstructorService {
      * Load FYP meetings from file on initialization.
      * Format: FYPMEETING|meetingId|groupId|date|agenda|notes
      */
-    private void loadFYPMeetingData() {
+    public void loadFYPMeetingData() {
         List<String> lines = FileManager.readLines(FYPMEETINGS_FILE);
         Logger.info("InstructorService", "Loaded " + lines.size() + " FYP meetings");
     }
@@ -100,7 +101,7 @@ public class InstructorService {
      * Load FYP evaluations from file on initialization.
      * Format: FYPEVALUATION|evaluationId|groupId|date|score|feedback
      */
-    private void loadFYPEvaluationData() {
+    public void loadFYPEvaluationData() {
         List<String> lines = FileManager.readLines(FYPEVALUATIONS_FILE);
         Logger.info("InstructorService", "Loaded " + lines.size() + " FYP evaluations");
     }
@@ -1169,4 +1170,66 @@ public class InstructorService {
         
         return summary.toString();
     }
+
+    public void loadInstructors() {
+        instructors.clear();
+        List<String> lines = FileManager.readLines("data/instructors.txt");
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 7 && p[0].equals("INSTRUCTOR")) {
+                if (p[1].equals("PERM")) {
+                    instructors.add(new PermanentInstructor(p[2], p[3], p[4], p[5], p[6]));
+                } else if (p[1].equals("VISIT")) {
+                    instructors.add(new VisitingInstructor(p[2], p[3], p[4], p[5], p[6]));
+                }
+            }
+        }
+    }
+
+    public void saveInstructors() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: INSTRUCTOR|type(PERM/VISIT)|id|name|email|phone|teacherId");
+        for (Instructor i : instructors) {
+            String type = (i instanceof PermanentInstructor) ? "PERM" : "VISIT";
+            lines.add("INSTRUCTOR|" + type + "|" + i.getId() + "|" + i.getName() + "|" + i.getEmail() + "|" + i.getPhoneNumber() + "|" + i.getTeacherId());
+        }
+        FileManager.writeAllLines("data/instructors.txt", lines);
+    }
+
+    public void loadFYPGroups() {
+        fypGroups.clear();
+        List<String> lines = FileManager.readLines("data/fyp_groups.txt");
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 4 && p[0].equals("FYPGROUP")) {
+                FYPGroup g = new FYPGroup(p[1], p[2], "");
+                Instructor inst = CampusRegistry.findInstructor(p[3]);
+                if (inst instanceof PermanentInstructor) {
+                    g.assignSupervisor((PermanentInstructor) inst);
+                    ((PermanentInstructor) inst).addSupervisedGroup(g);
+                }
+                fypGroups.add(g);
+            }
+        }
+    }
+
+    public void saveFYPGroups() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: FYPGROUP|groupId|title|supervisorId");
+        for (FYPGroup g : fypGroups) {
+            String sup = (g.getSupervisor() != null) ? g.getSupervisor().getTeacherId() : "null";
+            lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle() + "|" + sup);
+        }
+        FileManager.writeAllLines("data/fyp_groups.txt", lines);
+    }
+
+    public void loadFYPMeetings() {}
+    public void saveFYPMeetings() {}
+    public void loadFYPEvaluations() {}
+    public void saveFYPEvaluations() {}
+    public void loadAttendance() {}
+    public void saveAttendance() {}
+
 }

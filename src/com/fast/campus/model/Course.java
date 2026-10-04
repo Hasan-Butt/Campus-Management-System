@@ -33,7 +33,12 @@ public class Course {
     }
 
     public void addSection(Section section) {
-        sections.add(section);
+        if (section != null && !sections.contains(section)) {
+            sections.add(section);
+            if (section.getCourse() != this) {
+                section.setCourse(this);
+            }
+        }
     }
 
     // --- Getters ---
