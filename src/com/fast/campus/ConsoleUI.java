@@ -373,55 +373,142 @@ public class ConsoleUI {
 
         Logger.info(ta.getStudentId(), "Logged in to TA menu");
         while (true) {
-            System.out.println("\n--- TA Menu (" + ta.getName() + ") ---");
-            System.out.println("1. View Assigned Section & Students");
-            System.out.println("2. Create Assignment");
-            System.out.println("3. Evaluate Submissions");
-            System.out.println("4. Back to Main Menu");
-            System.out.print("Enter choice: ");
+            Section section = ta.getAssignedSection();
+            System.out.println("\n--- TA Menu (" + ta.getName() + ", " + ta.getStudentId() + " | section "
+                    + (section != null ? section.getSectionId() : "none assigned") + ") ---");
+            System.out.println(" 1. View Assigned Section");
+            System.out.println(" 2. View Enrolled Students");
+            System.out.println(" 3. Create Assignment");
+            System.out.println(" 4. View Section Assignments");
+            System.out.println(" 5. View Submissions");
+            System.out.println(" 6. Check Late Submissions");
+            System.out.println(" 7. Evaluate a Submission (assign marks)");
+            System.out.println(" 8. Give Feedback on a Submission");
+            System.out.println(" 9. Grading Progress");
+            System.out.println(" 0. Back to Main Menu");
 
-            String choice = scanner.nextLine();
+            String choice = prompt("Enter choice: ");
             try {
-                if (choice.equals("1")) {
-                    System.out.println("Assigned Section: " + (ta.getAssignedSection() != null ? ta.getAssignedSection().getSectionId() : "None"));
-                    if (ta.getAssignedSection() != null) {
-                        System.out.println("Enrolled Students:");
-                        ta.getAssignedSection().getEnrolledStudents().forEach(System.out::println);
+                if (section == null && !choice.equals("0")) {
+                    System.out.println("You have no assigned section yet — ask a Permanent Instructor or the Admin to assign you.");
+                    continue;
+                }
+                switch (choice) {
+                    case "1": {
+                        String when = section.getSchedule() != null ? section.getSchedule().getScheduleInfo() : "schedule not set";
+                        System.out.println("\nAssigned section: " + section);
+                        System.out.println("  Course: " + section.getCourse());
+                        System.out.println("  Schedule: " + when);
+                        System.out.println("  Instructor: " + (section.getInstructor() != null ? section.getInstructor().getName() : "not assigned"));
+                        break;
                     }
-                } else if (choice.equals("2")) {
-                    System.out.print("Title: "); String title = scanner.nextLine();
-                    System.out.print("Description: "); String desc = scanner.nextLine();
-                    System.out.print("Deadline (YYYY-MM-DD): "); String date = scanner.nextLine();
-                    System.out.print("Total Marks: "); double marks = Double.parseDouble(scanner.nextLine());
-                    studentService.createAssignment(ta, title, desc, java.time.LocalDate.parse(date), marks);
-                    System.out.println("Assignment created.");
-                } else if (choice.equals("3")) {
-                    System.out.print("Enter Assignment ID to evaluate: ");
-                    Assignment asg = studentService.findAssignment(scanner.nextLine());
-                    if (asg != null) {
-                        List<Submission> subs = studentService.viewSubmissions(ta, asg);
-                        subs.sort(java.util.Comparator.comparing(Submission::getSubmissionDate));
-                        for (Submission sub : subs) {
-                            System.out.println(sub);
-                            System.out.print("Enter marks (or press Enter to skip): ");
-                            String m = scanner.nextLine();
-                            if (!m.isEmpty()) {
-                                studentService.evaluateSubmission(ta, sub, Double.parseDouble(m));
-                                System.out.print("Enter feedback: ");
-                                studentService.giveFeedback(ta, sub, scanner.nextLine());
-                                System.out.println("Evaluation saved.");
-                            }
+                    case "2":
+                        printList("Students enrolled in " + section.getSectionId() + ":",
+                                section.getEnrolledStudents(), "No students enrolled yet.");
+                        break;
+                    case "3": {
+                        String title = prompt("Title: ");
+                        String description = prompt("Description: ");
+                        java.time.LocalDate deadline = promptDate("Deadline (YYYY-MM-DD): ");
+                        double totalMarks = promptDouble("Total marks: ");
+                        Assignment assignment = studentService.createAssignment(ta, title, description, deadline, totalMarks);
+                        System.out.println("Created: " + assignment);
+                        break;
+                    }
+                    case "4":
+                        printList("Assignments for " + section.getSectionId() + ":",
+                                sectionAssignments(section), "No assignments yet.");
+                        break;
+                    case "5": {
+                        Assignment assignment = chooseAssignment(section);
+                        if (assignment == null) break;
+                        printList("Submissions for " + assignment.getTitle() + ":",
+                                studentService.viewSubmissions(ta, assignment), "No submissions yet.");
+                        break;
+                    }
+                    case "6": {
+                        Assignment assignment = chooseAssignment(section);
+                        if (assignment == null) break;
+                        printList("Late submissions for " + assignment.getTitle() + ":",
+                                studentService.checkLateSubmissions(ta, assignment), "No late submissions.");
+                        break;
+                    }
+                    case "7": {
+                        Submission submission = chooseSubmission(ta, section);
+                        if (submission == null) break;
+                        double marks = promptDouble("Marks (0 - " + submission.getAssignment().getTotalMarks() + "): ");
+                        studentService.evaluateSubmission(ta, submission, marks);
+                        String comments = prompt("Feedback (press Enter to skip): ");
+                        if (!comments.isEmpty()) {
+                            studentService.giveFeedback(ta, submission, comments);
                         }
+                        System.out.println("Saved: " + submission);
+                        break;
                     }
-                } else if (choice.equals("4")) {
-                    break;
+                    case "8": {
+                        Submission submission = chooseSubmission(ta, section);
+                        if (submission == null) break;
+                        studentService.giveFeedback(ta, submission, prompt("Feedback: "));
+                        System.out.println("Saved: " + submission);
+                        break;
+                    }
+                    case "9":
+                        System.out.println("\nGrading progress for your assignments:");
+                        if (ta.getCreatedAssignments().isEmpty()) {
+                            System.out.println("  You haven't created any assignments yet.");
+                        }
+                        ta.evaluate();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
                 }
             } catch (CampusException e) {
-                System.out.println("Campus Error: " + e.getMessage());
+                System.out.println("Could not complete: " + e.getMessage());
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error(ta.getStudentId(), "Unexpected error in TA menu: " + e);
             }
         }
+    }
+
+    // --- TA menu helpers ---
+
+    private List<Assignment> sectionAssignments(Section section) {
+        List<Assignment> result = new java.util.ArrayList<>();
+        for (Assignment assignment : studentService.getAssignments()) {
+            if (assignment.getSection() == section) result.add(assignment);
+        }
+        return result;
+    }
+
+    /** Lists the section's assignments and asks for one; returns null if none or not found. */
+    private Assignment chooseAssignment(Section section) {
+        List<Assignment> assignments = sectionAssignments(section);
+        printList("Assignments for " + section.getSectionId() + ":", assignments, "No assignments yet.");
+        if (assignments.isEmpty()) return null;
+        Assignment assignment = studentService.findAssignment(prompt("Assignment ID: "));
+        if (assignment == null || !assignments.contains(assignment)) {
+            System.out.println("Assignment not found in your section.");
+            return null;
+        }
+        return assignment;
+    }
+
+    /** Asks for an assignment, lists its submissions and asks for one; returns null if none or not found. */
+    private Submission chooseSubmission(TeachingAssistant ta, Section section) throws CampusException {
+        Assignment assignment = chooseAssignment(section);
+        if (assignment == null) return null;
+        List<Submission> submissions = studentService.viewSubmissions(ta, assignment);
+        printList("Submissions for " + assignment.getTitle() + ":", submissions, "No submissions yet.");
+        if (submissions.isEmpty()) return null;
+        String id = prompt("Submission ID: ");
+        for (Submission submission : submissions) {
+            if (submission.getSubmissionId().equals(id)) return submission;
+        }
+        System.out.println("Submission not found.");
+        return null;
     }
 
     // --- PERMANENT INSTRUCTOR MENU ---
