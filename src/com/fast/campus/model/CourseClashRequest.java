@@ -36,7 +36,9 @@ public class CourseClashRequest extends Request {
 
     @Override
     public String getDetails() {
-        return "CourseClashRequest[" + getRequestId() + "] — " + getConflictDetails();
+        String description = getDescription() != null && !getDescription().isBlank()
+                ? " — \"" + getDescription() + "\"" : "";
+        return "CourseClashRequest[" + getRequestId() + "] — " + getConflictDetails() + description;
     }
 
     // --- Getters ---

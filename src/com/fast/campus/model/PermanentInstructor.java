@@ -75,7 +75,9 @@ public class PermanentInstructor extends Instructor implements Evaluator {
     /** UML: provideFYPFeedback(evaluation : FYPEvaluation, feedback : String) */
     public void provideFYPFeedback(FYPEvaluation evaluation, String feedback) {
         if (evaluation != null && feedback != null) {
-            evaluation.addFeedback(feedback);
+            // Keep the original evaluation feedback and append the new comment to it
+            String existing = evaluation.getFeedback();
+            evaluation.addFeedback(existing == null || existing.isBlank() ? feedback : existing + "; " + feedback);
         }
     }
 

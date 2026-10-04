@@ -42,7 +42,8 @@ public class ConsoleUI {
 
     private String prompt(String label) {
         System.out.print(label);
-        return scanner.nextLine().trim();
+        // '|' separates fields in the data files, so it can't appear inside typed text
+        return scanner.nextLine().trim().replace("|", "/");
     }
 
     private int promptInt(String label, int min, int max) {
@@ -385,8 +386,7 @@ public class ConsoleUI {
 
     // --- STUDENT MENU ---
     private void studentMenu() {
-        System.out.print("Enter your Student ID: ");
-        Student student = studentService.findStudent(scanner.nextLine());
+        Student student = studentService.findStudent(prompt("Enter your Student ID: "));
         if (student == null) { System.out.println("Student not found!"); return; }
 
         Logger.info(student.getStudentId(), "Logged in to Student menu");
@@ -445,9 +445,22 @@ public class ConsoleUI {
                         printList("Registered courses:", student.viewCourses(), "None yet.");
                         System.out.println("Total credit hours: " + student.calculateTotalCreditHours());
                         break;
-                    case "5":
-                        printList("Timetable:", studentService.viewTimetable(student), "No classes scheduled.");
+                    case "5": {
+                        List<Schedule> timetable = studentService.viewTimetable(student); // sorted by day/time
+                        System.out.println("\nTimetable:");
+                        if (timetable.isEmpty()) System.out.println("  No classes scheduled.");
+                        for (Schedule slot : timetable) {
+                            for (Section section : student.getEnrolledSections()) {
+                                if (section.getSchedule() == slot) {
+                                    String course = section.getCourse() != null
+                                            ? section.getCourse().getCourseCode() + " " + section.getCourse().getTitle() : "";
+                                    System.out.println("  " + slot.getScheduleInfo() + " — " + course
+                                            + " (" + section.getSectionId() + ")");
+                                }
+                            }
+                        }
                         break;
+                    }
                     case "6":
                         printList("Your assignments (earliest deadline first):",
                                 studentService.viewAssignments(student), "No assignments for your sections.");
@@ -458,8 +471,9 @@ public class ConsoleUI {
                         if (mine.isEmpty()) break;
                         Assignment assignment = studentService.findAssignment(prompt("Assignment ID to submit: "));
                         if (assignment == null) { System.out.println("Assignment not found."); break; }
-                        if (assignment.isDeadlinePassed()) {
-                            System.out.println("Note: the deadline has passed — this will be recorded as LATE.");
+                        if (assignment.isDeadlinePassed() && !assignment.isClosed()) {
+                            System.out.println("Note: the deadline has passed — this will be recorded as LATE"
+                                    + " (accepted until " + assignment.getDeadline().plusDays(Assignment.LATE_GRACE_DAYS) + ").");
                         }
                         Submission submission = studentService.submitAssignment(student, assignment,
                                 prompt("Your submission (text or link): "));
@@ -527,8 +541,7 @@ public class ConsoleUI {
 
     // --- TA MENU ---
     private void taMenu() {
-        System.out.print("Enter your TA Student ID: ");
-        Student s = studentService.findStudent(scanner.nextLine());
+        Student s = studentService.findStudent(prompt("Enter your TA Student ID: "));
         if (!(s instanceof TeachingAssistant)) { System.out.println("You are not a TA!"); return; }
         TeachingAssistant ta = (TeachingAssistant) s;
 
@@ -839,6 +852,7 @@ public class ConsoleUI {
             System.out.println("Student not found or already a TA.");
             return;
         }
+        studentService.checkCanPromoteToTA(student, section); // validate before anything changes
         instructorService.assignTA(pInst, (NormalStudent) student, section); // permission check + log
         studentService.promoteToTA(student, section); // replace the student with the TA in the registry and save
         System.out.println(student.getName() + " is now the TA of " + section.getSectionId() + ".");

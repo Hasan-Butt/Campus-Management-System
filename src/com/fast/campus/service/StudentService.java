@@ -113,13 +113,31 @@ public class StudentService {
      * student in the registry, taking over their enrollments (same IDs and dates) and requests.
      * Returns the new TA object — callers must use it from now on.
      */
-    public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
+    /**
+     * Throws if the student can't become TA of this section: not a normal student, the section
+     * already has a TA, or the student is enrolled in it (a TA can't grade their own section).
+     * Call it before anything changes the section.
+     */
+    public void checkCanPromoteToTA(Student student, Section section) throws UserException, CourseException {
         if (!(student instanceof NormalStudent)) {
             throw new InvalidUserException("Only a normal student can be promoted to TA");
         }
         if (section == null) {
             throw new InvalidCourseOperationException("Section cannot be empty");
         }
+        TeachingAssistant currentTA = section.getTeachingAssistant();
+        if (currentTA != null && students.contains(currentTA)) {
+            throw new InvalidCourseOperationException("Section " + section.getSectionId()
+                    + " already has a TA: " + currentTA.getName());
+        }
+        if (student.getEnrolledSections().contains(section)) {
+            throw new InvalidUserException(student.getName() + " is enrolled in " + section.getSectionId()
+                    + " and cannot be its TA");
+        }
+    }
+
+    public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
+        checkCanPromoteToTA(student, section);
         TeachingAssistant ta = new TeachingAssistant((NormalStudent) student);
 
         // Move enrollments: free the old object's seat, then enroll the TA with the same record
@@ -139,6 +157,7 @@ public class StudentService {
         }
         ta.calculateTotalCreditHours();
         ta.viewRequests().addAll(student.viewRequests());
+        replaceStudentEverywhere(student, ta);
 
         students.set(students.indexOf(student), ta);
         section.assignTA(ta); // also tells the TA its section
@@ -147,6 +166,36 @@ public class StudentService {
         saveRequests();
         Logger.info("StudentService", student.getStudentId() + " promoted to TA of section " + section.getSectionId());
         return ta;
+    }
+
+    /**
+     * Points every other record at the new TA object instead of the old student object,
+     * so nothing in this session keeps a stale copy (attendance, FYP groups, submissions).
+     */
+    private void replaceStudentEverywhere(Student old, TeachingAssistant ta) {
+        List<Attendance> attendance = CampusRegistry.attendanceRecords;
+        for (int i = 0; i < attendance.size(); i++) {
+            Attendance a = attendance.get(i);
+            if (a.getStudent() == old) {
+                attendance.set(i, new Attendance(ta, a.getSection(), a.getDate(), a.getStatus()));
+            }
+        }
+        for (FYPGroup group : CampusRegistry.fypGroups) {
+            if (group.getMembers().contains(old)) {
+                group.removeMember(old);
+                group.addMember(ta);
+            }
+        }
+        for (Assignment assignment : assignments) {
+            List<Submission> submissions = assignment.getSubmissions();
+            for (int i = 0; i < submissions.size(); i++) {
+                Submission s = submissions.get(i);
+                if (s.getStudent() == old) {
+                    submissions.set(i, new Submission(s.getSubmissionId(), assignment, ta, s.getSubmissionDate(),
+                            s.getContent(), s.getMarks(), s.getFeedback(), s.getStatus()));
+                }
+            }
+        }
     }
 
     // ================================================================

@@ -5,6 +5,7 @@ import com.fast.campus.exception.InvalidAssessmentException;
 import com.fast.campus.exception.CourseException;
 import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.exception.InvalidRequestException;
+import com.fast.campus.exception.SubmissionDeadlineException;
 import com.fast.campus.exception.UnauthorizedActionException;
 
 import java.util.ArrayList;
@@ -97,8 +98,16 @@ public abstract class Student extends Person {
         if (content == null || content.isBlank()) {
             throw new InvalidAssessmentException("Submission content cannot be empty");
         }
+        for (Submission existing : assignment.getSubmissions()) {
+            if (existing.getStudent().getStudentId().equals(studentId)) {
+                throw new InvalidAssessmentException("You have already submitted " + assignment.getTitle());
+            }
+        }
+        if (assignment.isClosed()) { // past the deadline + grace period
+            throw new SubmissionDeadlineException(assignment.getTitle());
+        }
         Submission submission = new Submission("S-" + System.currentTimeMillis(), assignment, this, content);
-        submission.submit(); // SUBMITTED, or LATE if after the deadline (late work is accepted)
+        submission.submit(); // SUBMITTED, or LATE if within the grace period after the deadline
         assignment.addSubmission(submission);
         return submission;
     }
@@ -114,6 +123,9 @@ public abstract class Student extends Person {
         }
         if (!enrolledSections.contains(current)) {
             throw new InvalidRequestException("Not registered in section " + current.getSectionId());
+        }
+        if (wanted == current) {
+            throw new InvalidRequestException("Choose two different sections");
         }
         if (!wanted.hasClash(current)) { // "Check Section Clash" use case
             throw new InvalidRequestException("Sections " + current.getSectionId() + " and "
@@ -145,4 +157,9 @@ public abstract class Student extends Person {
     public List<Enrollment> getEnrollments()        { return enrollments; }
     public List<Section> getEnrolledSections()      { return enrolledSections; }
     public List<Course> getRegisteredCourses()      { return registeredCourses; }
+
+    @Override
+    public String toString() {
+        return getRole() + " [" + studentId + ", " + getName() + "]";
+    }
 }
