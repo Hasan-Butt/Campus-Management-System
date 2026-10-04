@@ -64,4 +64,11 @@ public class Submission {
     public double getMarks()             { return marks; }
     public Feedback getFeedback()        { return feedback; }
     public SubmissionStatus getStatus()  { return status; }
+
+    public void setAssignment(Assignment assignment) {
+        this.assignment = assignment;
+        if (assignment != null && !assignment.getSubmissions().contains(this)) {
+            assignment.addSubmission(this);
+        }
+    }
 }

@@ -62,6 +62,9 @@ public abstract class Instructor extends Person {
     public void addSection(Section section) {
         if (section != null && !assignedSections.contains(section)) {
             assignedSections.add(section);
+            if (section.getInstructor() != this) {
+                section.assignInstructor(this);
+            }
         }
     }
 }

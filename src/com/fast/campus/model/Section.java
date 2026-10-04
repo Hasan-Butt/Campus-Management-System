@@ -144,15 +144,15 @@ public class Section {
 
     public void assignInstructor(Instructor instructor) {
         this.instructor = instructor;
+        if (instructor != null && !instructor.getAssignedSections().contains(this)) {
+            instructor.addSection(this);
+        }
     }
 
     public void assignTA(TeachingAssistant ta) {
-        if (this.teachingAssistant != null && this.teachingAssistant != ta) {
-            this.teachingAssistant.setAssignedSection(null); // previous TA no longer has this section
-        }
         this.teachingAssistant = ta;
-        if (ta != null) {
-            ta.setAssignedSection(this); // the TA must know its section to create/grade assignments
+        if (ta != null && ta.getAssignedSection() != this) {
+            ta.setAssignedSection(this);
         }
     }
 
@@ -195,5 +195,12 @@ public class Section {
     public String toString() {
         return "Section[" + sectionId + " | " + course.getCourseCode()
                 + " | seats=" + getAvailableSeats() + "/" + capacity + "]";
+    }
+
+    public void setCourse(Course course) {
+        this.course = course;
+        if (course != null && !course.getSections().contains(this)) {
+            course.addSection(this);
+        }
     }
 }

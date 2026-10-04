@@ -84,6 +84,9 @@ public class PermanentInstructor extends Instructor implements Evaluator {
     public void addSupervisedGroup(FYPGroup group) {
         if (group != null && !supervisedGroups.contains(group)) {
             supervisedGroups.add(group);
+            if (group.getSupervisor() != this) {
+                group.assignSupervisor(this);
+            }
         }
     }
 
