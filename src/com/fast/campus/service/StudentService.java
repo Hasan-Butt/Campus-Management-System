@@ -17,6 +17,7 @@ import com.fast.campus.exception.UserException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
+import com.fast.campus.util.CampusRegistry;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -59,8 +60,8 @@ public class StudentService {
             + "  (CLASH: detail1=conflictingSectionId, detail2=requestedSectionId; GENERIC: detail1=category)";
 
     private final AcademicOfficeService academicService; // source of the loaded sections
-    private final List<Student> students = new ArrayList<>();
-    private final List<Assignment> assignments = new ArrayList<>();
+    private final List<Student> students = CampusRegistry.students;
+    private final List<Assignment> assignments = CampusRegistry.assignments;
 
     // ================================================================
     // CONSTRUCTOR — LOAD EXISTING DATA
@@ -263,7 +264,7 @@ public class StudentService {
     // PERSISTENCE — STUDENTS & ENROLLMENTS
     // ================================================================
 
-    private void saveStudents() {
+    public void saveStudents() {
         List<String> lines = new ArrayList<>();
         lines.add(STUDENTS_HEADER);
         for (Student s : students) {
@@ -280,7 +281,7 @@ public class StudentService {
         FileManager.writeAllLines(STUDENTS_FILE, lines);
     }
 
-    private void loadStudents() {
+    public void loadStudents() {
         for (String line : FileManager.readLines(STUDENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 7 || !p[0].equals("STUDENT")) {
@@ -303,7 +304,7 @@ public class StudentService {
         Logger.info("StudentService", "Loaded " + students.size() + " student(s) from file");
     }
 
-    private void saveEnrollments() {
+    public void saveEnrollments() {
         List<String> lines = new ArrayList<>();
         lines.add(ENROLLMENTS_HEADER);
         for (Student s : students) {
@@ -315,7 +316,7 @@ public class StudentService {
         FileManager.writeAllLines(ENROLLMENTS_FILE, lines);
     }
 
-    private void loadEnrollments() {
+    public void loadEnrollments() {
         int active = 0;
         int dropped = 0;
         for (String line : FileManager.readLines(ENROLLMENTS_FILE)) {
@@ -368,7 +369,7 @@ public class StudentService {
     // PERSISTENCE — ASSIGNMENTS & SUBMISSIONS
     // ================================================================
 
-    private void saveAssignments() {
+    public void saveAssignments() {
         List<String> lines = new ArrayList<>();
         lines.add(ASSIGNMENTS_HEADER);
         for (Assignment a : assignments) {
@@ -379,7 +380,7 @@ public class StudentService {
         FileManager.writeAllLines(ASSIGNMENTS_FILE, lines);
     }
 
-    private void loadAssignments() {
+    public void loadAssignments() {
         for (String line : FileManager.readLines(ASSIGNMENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 8 || !p[0].equals("ASSIGNMENT")) {
@@ -406,7 +407,7 @@ public class StudentService {
         Logger.info("StudentService", "Loaded " + assignments.size() + " assignment(s) from file");
     }
 
-    private void saveSubmissions() {
+    public void saveSubmissions() {
         List<String> lines = new ArrayList<>();
         lines.add(SUBMISSIONS_HEADER);
         for (Assignment a : assignments) {
@@ -425,7 +426,7 @@ public class StudentService {
         FileManager.writeAllLines(SUBMISSIONS_FILE, lines);
     }
 
-    private void loadSubmissions() {
+    public void loadSubmissions() {
         int loaded = 0;
         for (String line : FileManager.readLines(SUBMISSIONS_FILE)) {
             String[] p = line.split("\\|", -1);
@@ -555,7 +556,7 @@ public class StudentService {
         FileManager.writeAllLines(REQUESTS_FILE, lines);
     }
 
-    private void loadRequests() {
+    public void loadRequests() {
         int loaded = 0;
         for (String line : FileManager.readLines(REQUESTS_FILE)) {
             String[] p = line.split("\\|", -1);

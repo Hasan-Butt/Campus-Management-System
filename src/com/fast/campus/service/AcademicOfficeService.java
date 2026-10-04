@@ -9,6 +9,7 @@ import com.fast.campus.exception.CourseClashException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
+import com.fast.campus.util.CampusRegistry;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -37,9 +38,9 @@ public class AcademicOfficeService {
     private static final String ENROLLMENTS_FILE = "data/enrollments.txt";
 
     // In-memory storage for runtime operations
-    private List<Course> courses   = new ArrayList<>();
-    private List<Section> sections = new ArrayList<>();
-    private List<Request> requests = new ArrayList<>();
+    private List<Course> courses = CampusRegistry.courses;
+    private List<Section> sections = CampusRegistry.sections;
+    private List<Request> requests = CampusRegistry.requests;
 
     // ================================================================
     // CONSTRUCTOR — LOAD EXISTING DATA
@@ -48,6 +49,9 @@ public class AcademicOfficeService {
     /**
      * Constructor - loads existing data from persistence files.
      */
+    public void loadAdmins() {}
+    public void saveAdmins() {}
+
     public AcademicOfficeService() {
         loadCourseData();
         loadSectionData();
@@ -62,7 +66,7 @@ public class AcademicOfficeService {
      * Loads course records from data/courses.txt.
      * Format: COURSE|courseCode|title|creditHours
      */
-    private void loadCourseData() {
+    public void loadCourseData() {
         List<String> lines = FileManager.readLines(COURSES_FILE);
         for (String line : lines) {
             String[] parts = line.split("\\|");
@@ -91,7 +95,7 @@ public class AcademicOfficeService {
      * Loads section records from data/sections.txt.
      * Format: SECTION|sectionId|courseCode|capacity|day|startTime|endTime|room
      */
-    private void loadSectionData() {
+    public void loadSectionData() {
         List<String> lines = FileManager.readLines(SECTIONS_FILE);
         for (String line : lines) {
             String[] parts = line.split("\\|");
@@ -133,7 +137,7 @@ public class AcademicOfficeService {
      * Format: ENROLLMENT|enrollmentId|studentId|sectionId|date|status
      * Note: Full reconstruction requires Student references from StudentService.
      */
-    private void loadEnrollmentData() {
+    public void loadEnrollmentData() {
         List<String> lines = FileManager.readLines(ENROLLMENTS_FILE);
         Logger.info("AcademicOfficeService",
                 "Loaded " + lines.size() + " enrollment record(s) from file");
@@ -838,4 +842,64 @@ public class AcademicOfficeService {
     public int getTotalSections() {
         return sections.size();
     }
+
+    public void loadCourses() {
+        courses.clear();
+        List<String> lines = FileManager.readLines("data/courses.txt");
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] parts = line.split("\\|");
+            if (parts.length >= 4 && parts[0].equals("COURSE")) {
+                Course c = new Course(parts[1], parts[2], Integer.parseInt(parts[3]));
+                courses.add(c);
+            }
+        }
+    }
+
+    public void saveCourses() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: COURSE|courseCode|title|creditHours");
+        for (Course c : courses) {
+            lines.add("COURSE|" + c.getCourseCode() + "|" + c.getTitle() + "|" + c.getCreditHours());
+        }
+        FileManager.writeAllLines("data/courses.txt", lines);
+    }
+
+    public void loadSections() {
+        sections.clear();
+        List<String> lines = FileManager.readLines("data/sections.txt");
+        for (String line : lines) {
+            if (line.startsWith("#") || line.trim().isEmpty()) continue;
+            String[] p = line.split("\\|");
+            if (p.length >= 8 && p[0].equals("SECTION")) {
+                Course c = CampusRegistry.findCourse(p[3]);
+                if (c == null) continue;
+                
+                com.fast.campus.enums.Day day = com.fast.campus.enums.Day.valueOf(p[4]);
+                Schedule s = new Schedule(day, p[5], p[6], p[7]);
+                Section sec = new Section(p[1], Integer.parseInt(p[2]), c, s);
+                if (p.length > 8 && !p[8].equals("null")) {
+                    Instructor inst = CampusRegistry.findInstructor(p[8]);
+                    if (inst != null) {
+                        sec.assignInstructor(inst);
+                        inst.addSection(sec);
+                    }
+                }
+                sections.add(sec);
+            }
+        }
+    }
+
+    public void saveSections() {
+        List<String> lines = new ArrayList<>();
+        lines.add("# Format: SECTION|sectionId|capacity|courseCode|day|startTime|endTime|room|instructorId");
+        for (Section s : sections) {
+            String inst = (s.getInstructor() != null) ? s.getInstructor().getTeacherId() : "null";
+            lines.add("SECTION|" + s.getSectionId() + "|" + s.getCapacity() + "|" + s.getCourse().getCourseCode() + "|" + 
+                      s.getSchedule().getDay() + "|" + s.getSchedule().getStartTime() + "|" + s.getSchedule().getEndTime() + "|" + 
+                      s.getSchedule().getRoom() + "|" + inst);
+        }
+        FileManager.writeAllLines("data/sections.txt", lines);
+    }
+
 }

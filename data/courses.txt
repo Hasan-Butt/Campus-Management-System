@@ -1,3 +1,4 @@
 COURSE|CS101|Intro to Programming|4
 COURSE|CS201|Data Structures|3
 COURSE|CS301|Software Construction|3
+COURSE|SE-0001|SCD|3
