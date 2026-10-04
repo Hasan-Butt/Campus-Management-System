@@ -196,6 +196,21 @@ public class StudentService {
         return result;
     }
 
+    /** The student's own submissions with status, marks and feedback (newest first). */
+    public List<Submission> viewMySubmissions(Student student) {
+        List<Submission> result = new ArrayList<>();
+        for (Assignment assignment : assignments) {
+            for (Submission submission : assignment.getSubmissions()) {
+                if (submission.getStudent().getStudentId().equals(student.getStudentId())) {
+                    result.add(submission);
+                }
+            }
+        }
+        result.sort((a, b) -> b.getSubmissionDate().compareTo(a.getSubmissionDate()));
+        Logger.info("Student", student.getStudentId() + " viewed " + result.size() + " submission(s) and grades");
+        return result;
+    }
+
     public Submission submitAssignment(Student student, Assignment assignment, String content)
             throws UnauthorizedActionException, AssessmentException {
         Submission submission;

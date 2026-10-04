@@ -168,8 +168,29 @@ public class ConsoleUI {
                     } else if (sort.equals("2")) {
                         reqs.sort(new com.fast.campus.comparator.RequestDateComparator());
                     }
-                    for (Request r : reqs) System.out.println(r);
-                    System.out.println("Note: Processing logic goes here in real UI.");
+                    printList("Requests:", reqs, "No requests submitted.");
+                    String requestId = reqs.isEmpty() ? "" : prompt("Request ID to approve/reject (press Enter to skip): ");
+                    if (!requestId.isEmpty()) {
+                        Request selected = null;
+                        for (Request r : reqs) {
+                            if (r.getRequestId().equals(requestId)) selected = r;
+                        }
+                        if (selected == null) {
+                            System.out.println("Request not found.");
+                        } else {
+                            String decision = prompt("1. Approve  2. Reject: ");
+                            if (decision.equals("1")) {
+                                academicService.approveRequest(selected);
+                            } else if (decision.equals("2")) {
+                                academicService.rejectRequest(selected);
+                            } else {
+                                System.out.println("Invalid choice — request left unchanged.");
+                            }
+                            // AcademicOfficeService only changes the status in memory; requests.txt is saved here
+                            studentService.saveRequests();
+                            System.out.println("Now: " + selected);
+                        }
+                    }
                 } else if (choice.equals("6")) {
                     System.out.println("1. Create Student");
                     System.out.println("2. Create Permanent Instructor");
@@ -253,6 +274,7 @@ public class ConsoleUI {
             System.out.println(" 9. Submit Course Clash Request");
             System.out.println("10. Submit Other Request (professor / classmate / other)");
             System.out.println("11. View My Requests");
+            System.out.println("12. View My Submissions & Grades");
             System.out.println(" 0. Back to Main Menu");
 
             String choice = prompt("Enter choice: ");
@@ -350,6 +372,15 @@ public class ConsoleUI {
                     case "11":
                         printList("Your requests (oldest first):", studentService.viewRequests(student), "No requests yet.");
                         break;
+                    case "12": {
+                        List<Submission> mine = studentService.viewMySubmissions(student);
+                        System.out.println("\nYour submissions (newest first):");
+                        if (mine.isEmpty()) System.out.println("  You haven't submitted anything yet.");
+                        for (Submission submission : mine) {
+                            System.out.println("  " + submission.getAssignment().getTitle() + " — " + submission);
+                        }
+                        break;
+                    }
                     case "0":
                         return;
                     default:
