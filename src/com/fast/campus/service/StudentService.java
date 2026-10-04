@@ -83,7 +83,7 @@ public class StudentService {
     // ================================================================
 
     public void addStudent(Student student) throws UserException {
-        if (student == null || student.getStudentId() == null || student.getStudentId().isBlank()) {
+        if (student == null || student.getStudentId() == null || student.getStudentId().trim().isEmpty()) {
             throw new InvalidUserException("Student must have a student ID");
         }
         if (findStudent(student.getStudentId()) != null) {
@@ -390,6 +390,7 @@ public class StudentService {
     }
 
     public void loadStudents() {
+        students.clear(); // safe to call again (e.g. CampusRegistry.loadAll) without duplicates
         for (String line : FileManager.readLines(STUDENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 7 || !p[0].equals("STUDENT")) {
@@ -489,6 +490,7 @@ public class StudentService {
     }
 
     public void loadAssignments() {
+        assignments.clear(); // safe to call again without duplicates
         for (String line : FileManager.readLines(ASSIGNMENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 8 || !p[0].equals("ASSIGNMENT")) {

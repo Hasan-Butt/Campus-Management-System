@@ -7,6 +7,9 @@
 
 # Part A — SE3005: Software Construction & Development
 
+> **Note (updated after the UML audit):** the class and use-case diagrams in `Assignment-1.pdf` are the authoritative spec.
+> Where this plan's method names differed from the UML, the sections below were corrected to the UML signatures that the code implements.
+
 ## 1. Assignment Overview
 
 ### Assignment
@@ -528,21 +531,21 @@ Required information:
 ```text
 studentId
 totalCreditHours
-enrolledSections
-registeredCourses
+enrollments : List<Enrollment>
 ```
 
-Required operations:
+Required operations (UML):
 
 ```text
-viewCourses()
-viewSection()
-dropSection()
-viewTimetable()
-submitCourseClashRequest()
+getStudentId() : String
+register(section : Section) : void
+drop(section : Section) : void
+calculateTotalCreditHours() : int
+viewCourses() : List<Course>
+viewTimetable() : List<Schedule>
+submitAssignment(assignment : Assignment, content : String) : Submission
+submitCourseClashRequest(request : CourseClashRequest) : void
 ```
-
-The team plan lists `viewCourses` twice; retain the intended functionality as one operation rather than implementing duplicate methods solely because of the repeated listing.
 
 ---
 
@@ -552,12 +555,6 @@ Inheritance:
 
 ```text
 NormalStudent extends Student
-```
-
-Required information:
-
-```text
-assignedSection
 ```
 
 Required operation:
@@ -585,11 +582,14 @@ assignedSection
 Required operations:
 
 ```text
-createAssignment()
-readSubmissions()
-giveEvaluationAndSubmission()
-getRole()
+getAssignedSection() : Section
+createAssignment(title, description, deadline : LocalDate, totalMarks : double) : Assignment
+viewSubmissions(assignment : Assignment) : List<Submission>
+evaluateSubmission(submission : Submission, marks : double) : void
+giveFeedback(submission : Submission, comments : String) : void
 ```
+
+TeachingAssistant also implements the `Evaluator` interface (`evaluate()`).
 
 ---
 
@@ -915,12 +915,13 @@ List<Section>
 Required operations:
 
 ```text
-viewCourses()
-viewSection()
-viewStudents()
-markAttendance()
-updateAttendance()
-calculateAttendancePercentage()
+getTeacherId() : String
+viewCourses() : List<Course>
+viewSections() : List<Section>
+viewEnrolledStudents(section : Section) : List<Student>
+markAttendance(attendance : Attendance, status : AttendanceStatus) : void
+updateAttendance(attendance : Attendance, status : AttendanceStatus) : void
+calculateAttendancePercentage(student : Student, section : Section) : double
 ```
 
 ---
@@ -952,13 +953,16 @@ Instructor
 Required operations:
 
 ```text
-assignTAAsStudent(NormalStudent, section)
-viewFYPGroup()
-scheduleFYPMeeting()
-evaluateFYPIdea()
-provideFYPFeedback()
-getRole()
+getRole() : String
+assignTA(student : NormalStudent, section : Section) : void
+viewFYPGroups() : List<FYPGroup>
+viewFYPGroupDetails(group : FYPGroup) : String
+scheduleFYPMeeting(group : FYPGroup, meeting : FYPMeeting) : void
+evaluateFYPIdea(group : FYPGroup, evaluation : FYPEvaluation) : void
+provideFYPFeedback(evaluation : FYPEvaluation, feedback : String) : void
 ```
+
+PermanentInstructor also implements the `Evaluator` interface (`evaluate()`).
 
 ---
 

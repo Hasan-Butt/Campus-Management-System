@@ -1,19 +1,14 @@
 package com.fast.campus.service;
 
 import com.fast.campus.enums.Day;
-import com.fast.campus.enums.EnrollmentStatus;
 import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.exception.CourseException;
 import com.fast.campus.exception.InvalidCourseOperationException;
-import com.fast.campus.exception.CourseFullException;
-import com.fast.campus.exception.CourseClashException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
 import com.fast.campus.util.CampusRegistry;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;

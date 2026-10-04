@@ -70,7 +70,7 @@ public class TeachingAssistant extends Student implements Evaluator {
         if (assignedSection == null) {
             throw new UnauthorizedActionException(getName(), "create assignment " + title);
         }
-        if (title == null || title.isBlank()) {
+        if (title == null || title.trim().isEmpty()) {
             throw new InvalidAssessmentException("Assignment title cannot be empty");
         }
         if (totalMarks <= 0) {

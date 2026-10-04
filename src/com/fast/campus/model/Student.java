@@ -95,7 +95,7 @@ public abstract class Student extends Person {
         if (assignment == null || !enrolledSections.contains(assignment.getSection())) {
             throw new UnauthorizedActionException(getName(), "submit an assignment of a section they are not enrolled in");
         }
-        if (content == null || content.isBlank()) {
+        if (content == null || content.trim().isEmpty()) {
             throw new InvalidAssessmentException("Submission content cannot be empty");
         }
         for (Submission existing : assignment.getSubmissions()) {
@@ -139,7 +139,7 @@ public abstract class Student extends Person {
         if (request == null || request.getCategory() == null) {
             throw new InvalidRequestException("Request must have a category");
         }
-        if (request.getDescription() == null || request.getDescription().isBlank()) {
+        if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
             throw new InvalidRequestException("Request description cannot be empty");
         }
         request.submit();

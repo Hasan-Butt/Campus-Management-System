@@ -77,7 +77,7 @@ public class PermanentInstructor extends Instructor implements Evaluator {
         if (evaluation != null && feedback != null) {
             // Keep the original evaluation feedback and append the new comment to it
             String existing = evaluation.getFeedback();
-            evaluation.addFeedback(existing == null || existing.isBlank() ? feedback : existing + "; " + feedback);
+            evaluation.addFeedback(existing == null || existing.trim().isEmpty() ? feedback : existing + "; " + feedback);
         }
     }
 

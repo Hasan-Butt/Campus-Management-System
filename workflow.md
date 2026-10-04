@@ -57,7 +57,7 @@ SCD-Assigment-1/
 │   ├── fypmeetings.txt
 │   └── fyp_evaluations.txt
 │
-├── logs/                           # Auto-generated application logs (logs/campus.log)
+├── logs/                           # Auto-generated application logs (logs/logs.log)
 ├── docs/                           # Documentation, diagrams, screenshots
 └── out/                            # Compiled bytecode (git-ignored)
 ```
@@ -88,7 +88,7 @@ Here is the clean separation of concerns followed across the entire project:
             ┌──────────────┐    ┌───────────────┐   ┌────────────────────┐
             │  FILE I/O    │    │    LOGGER     │   │    MODEL LAYER     │
             │(FileManager) │    │ (Logger.java) │   │(com.fast.campus.   │
-            │  data/*.txt  │    │logs/campus.log│   │     model.*)       │
+            │  data/*.txt  │    │ logs/logs.log │   │     model.*)       │
             └──────────────┘    └───────────────┘   │ • Fields/Attributes│
                                                     │ • Getters/Setters  │
                                                     │ • Self-state rules │
@@ -329,7 +329,7 @@ Logger.warn("Student", "Late submission attempt for assignment A1");
 // Error level: caught exceptions or unexpected states
 Logger.error("Instructor", "Failed to update attendance: Record not found");
 ```
-Log output format: `[YYYY-MM-DD HH:mm:ss] [LEVEL] [Actor] Event` (written to console and `logs/campus.log`).
+Log output format: `[YYYY-MM-DD HH:mm:ss] [LEVEL] [Actor] Event` (written to `logs/logs.log`; add `-Dcampus.log.console=true` to also print to the console).
 
 ### 7.2 Persistence Convention (`FileManager.java`)
 All entity persistence uses flat-file storage in the `data/` directory.

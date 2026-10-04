@@ -1,7 +1,6 @@
 package com.fast.campus.service;
 
 import com.fast.campus.enums.AttendanceStatus;
-import com.fast.campus.exception.FYPException;
 import com.fast.campus.exception.InvalidFYPEvaluationException;
 import com.fast.campus.exception.InvalidFYPGroupException;
 import com.fast.campus.exception.UnauthorizedActionException;
@@ -55,58 +54,9 @@ public class InstructorService {
         loadFYPEvaluations();
     }
     
-    // ================================================================
-    // DATA LOADING METHODS
-    // ================================================================
-    
-    /**
-     * Load instructor records from file on initialization.
-     * Format: INSTRUCTOR|teacherId|name|email|phone|type
-     */
-    public void loadInstructorData() {
-        List<String> lines = FileManager.readLines(INSTRUCTORS_FILE);
-        // Note: Full reconstruction would require re-creating Instructor objects
-        // For now, we log the count. Full implementation would parse and instantiate.
-        Logger.info("InstructorService", "Loaded " + lines.size() + " instructor records");
-    }
+    // Data is loaded by loadInstructors(), loadAttendance(), loadFYPGroups(), loadFYPMeetings()
+    // and loadFYPEvaluations() (called from the constructor; see the end of this class).
 
-    /**
-     * Load attendance records from file on initialization.
-     * Format: ATTENDANCE|studentId|sectionId|date|status
-     */
-    public void loadAttendanceData() {
-        List<String> lines = FileManager.readLines(ATTENDANCE_FILE);
-        // Note: Full reconstruction would require Student/Section references
-        Logger.info("InstructorService", "Loaded " + lines.size() + " attendance records");
-    }
-    
-    /**
-     * Load FYP groups from file on initialization.
-     * Format: FYPGROUP|groupId|title|description|supervisorId
-     */
-    public void loadFYPGroupData() {
-        List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP groups");
-    }
-    
-    /**
-     * Load FYP meetings from file on initialization.
-     * Format: FYPMEETING|meetingId|groupId|date|agenda|notes
-     */
-    public void loadFYPMeetingData() {
-        List<String> lines = FileManager.readLines(FYPMEETINGS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP meetings");
-    }
-    
-    /**
-     * Load FYP evaluations from file on initialization.
-     * Format: FYPEVALUATION|evaluationId|groupId|date|score|feedback
-     */
-    public void loadFYPEvaluationData() {
-        List<String> lines = FileManager.readLines(FYPEVALUATIONS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP evaluations");
-    }
-    
     // ================================================================
     // INSTRUCTOR VIEWING OPERATIONS
     // ================================================================
@@ -189,7 +139,6 @@ public class InstructorService {
         
         return students;
     }
-
 
     // ================================================================
     // ATTENDANCE MANAGEMENT
@@ -425,7 +374,6 @@ public class InstructorService {
         return percentage;
     }
 
-
     // ================================================================
     // TEACHING ASSISTANT ASSIGNMENT (PermanentInstructor only)
     // ================================================================
@@ -629,7 +577,6 @@ public class InstructorService {
         // Rewrite the whole file in the one format loadFYPGroups understands
         saveFYPGroups();
     }
-
 
     // ================================================================
     // FYP MEETING MANAGEMENT
@@ -1172,7 +1119,7 @@ public class InstructorService {
                     g.assignSupervisor((PermanentInstructor) inst);
                     ((PermanentInstructor) inst).addSupervisedGroup(g);
                 }
-                if (p.length > 4 && !p[4].isBlank()) {
+                if (p.length > 4 && !p[4].trim().isEmpty()) {
                     for (String studentId : p[4].split(",")) {
                         Student member = CampusRegistry.findStudent(studentId.trim());
                         if (member != null) {
