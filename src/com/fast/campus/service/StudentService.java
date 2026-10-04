@@ -105,6 +105,48 @@ public class StudentService {
         return new ArrayList<>(students);
     }
 
+    /**
+     * Turns a NormalStudent into a TeachingAssistant for the given section.
+     * A Java object can't change its class, so a new TeachingAssistant object replaces the
+     * student in the registry, taking over their enrollments (same IDs and dates) and requests.
+     * Returns the new TA object — callers must use it from now on.
+     */
+    public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
+        if (!(student instanceof NormalStudent)) {
+            throw new UserException("Only a normal student can be promoted to TA");
+        }
+        if (section == null) {
+            throw new CourseException("Section cannot be empty");
+        }
+        TeachingAssistant ta = new TeachingAssistant((NormalStudent) student);
+
+        // Move enrollments: free the old object's seat, then enroll the TA with the same record
+        for (Enrollment old : new ArrayList<>(student.getEnrollments())) {
+            Section enrolledIn = old.getSection();
+            if (old.getStatus() == EnrollmentStatus.ACTIVE) {
+                enrolledIn.drop(student);
+                enrolledIn.enroll(new Enrollment(old.getEnrollmentId(), ta, enrolledIn, old.getEnrollmentDate()));
+                if (enrolledIn.getCourse() != null && !ta.getRegisteredCourses().contains(enrolledIn.getCourse())) {
+                    ta.getRegisteredCourses().add(enrolledIn.getCourse());
+                }
+            } else {
+                Enrollment history = new Enrollment(old.getEnrollmentId(), ta, enrolledIn, old.getEnrollmentDate());
+                history.setStatus(old.getStatus());
+                ta.getEnrollments().add(history);
+            }
+        }
+        ta.calculateTotalCreditHours();
+        ta.viewRequests().addAll(student.viewRequests());
+
+        students.set(students.indexOf(student), ta);
+        section.assignTA(ta); // also tells the TA its section
+        saveStudents();
+        saveEnrollments();
+        saveRequests();
+        Logger.info("StudentService", student.getStudentId() + " promoted to TA of section " + section.getSectionId());
+        return ta;
+    }
+
     // ================================================================
     // REGISTRATION
     // ================================================================

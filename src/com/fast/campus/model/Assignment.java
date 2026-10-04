@@ -47,4 +47,11 @@ public class Assignment extends Assessment {
 
     public Section getSection()              { return section; }
     public TeachingAssistant getCreatedBy()  { return createdBy; }
+
+    @Override
+    public String toString() {
+        return "[" + getId() + "] " + getTitle() + " | section " + section.getSectionId()
+                + " | due " + getDeadline() + (isDeadlinePassed() ? " (closed)" : "")
+                + " | " + getTotalMarks() + " marks | " + submissions.size() + " submission(s)";
+    }
 }

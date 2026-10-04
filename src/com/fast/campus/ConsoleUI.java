@@ -133,7 +133,8 @@ public class ConsoleUI {
                         System.out.print("Email: "); String email = scanner.nextLine();
                         System.out.print("Phone: "); String phone = scanner.nextLine();
                         System.out.print("Student ID: "); String sId = scanner.nextLine();
-                        com.fast.campus.util.CampusRegistry.students.add(new NormalStudent(id, name, email, phone, sId));
+                        // Through StudentService so it is validated (unique ID) and saved to students.txt
+                        studentService.addStudent(new NormalStudent(id, name, email, phone, sId));
                         System.out.println("Student created.");
                         Logger.info("Admin", "Created Student: " + sId);
                     } else if (um.equals("2")) {
@@ -158,11 +159,16 @@ public class ConsoleUI {
                         System.out.print("Student ID to promote: "); String sId = scanner.nextLine();
                         Student s = studentService.findStudent(sId);
                         if (s instanceof NormalStudent) {
-                            TeachingAssistant ta = new TeachingAssistant(s.getId(), s.getName(), s.getEmail(), s.getPhoneNumber(), s.getStudentId());
-                            com.fast.campus.util.CampusRegistry.students.remove(s);
-                            com.fast.campus.util.CampusRegistry.students.add(ta);
-                            System.out.println("Student promoted to TA successfully.");
-                            Logger.info("Admin", "Promoted Student to TA: " + sId);
+                            System.out.print("Section ID the TA will assist: ");
+                            Section sec = searchSection(scanner.nextLine());
+                            if (sec == null) {
+                                System.out.println("Section not found.");
+                            } else {
+                                // Keeps the student's enrollments/requests and saves the change
+                                studentService.promoteToTA(s, sec);
+                                System.out.println("Student promoted to TA of " + sec.getSectionId() + ".");
+                                Logger.info("Admin", "Promoted Student to TA: " + sId);
+                            }
                         } else {
                             System.out.println("Student not found or already a TA.");
                         }
@@ -353,7 +359,8 @@ public class ConsoleUI {
                     System.out.print("Enter Section ID: ");
                     Section sec = searchSection(scanner.nextLine());
                     if (st instanceof NormalStudent && sec != null) {
-                        instructorService.assignTA(pInst, (NormalStudent) st, sec);
+                        instructorService.assignTA(pInst, (NormalStudent) st, sec); // permission check + audit record
+                        studentService.promoteToTA(st, sec); // replace the student with the TA in the registry and save
                         System.out.println("TA Assigned successfully.");
                     } else {
                         System.out.println("Invalid student type or section not found.");

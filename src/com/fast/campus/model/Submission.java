@@ -71,4 +71,20 @@ public class Submission {
             assignment.addSubmission(this);
         }
     }
+
+    @Override
+    public String toString() {
+        String result = "[" + submissionId + "] " + student.getName() + " (" + student.getStudentId() + ")"
+                + " | " + submissionDate + " | " + status;
+        if (status == SubmissionStatus.EVALUATED) {
+            result += " | " + marks + "/" + assignment.getTotalMarks();
+        }
+        if (isLate() && status != SubmissionStatus.LATE) {
+            result += " (late)";
+        }
+        if (feedback != null) {
+            result += " | feedback: " + feedback.getComments();
+        }
+        return result;
+    }
 }
