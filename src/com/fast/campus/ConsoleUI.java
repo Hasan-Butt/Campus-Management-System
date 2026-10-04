@@ -8,6 +8,7 @@ import com.fast.campus.model.*;
 import com.fast.campus.service.AcademicOfficeService;
 import com.fast.campus.service.InstructorService;
 import com.fast.campus.service.StudentService;
+import com.fast.campus.util.Logger;
 
 import java.util.List;
 import java.util.Scanner;
@@ -34,6 +35,7 @@ public class ConsoleUI {
     }
 
     public void start() {
+        Logger.info("System", "ConsoleUI Started");
         boolean running = true;
         while (running) {
             System.out.println("\n=== FAST Campus Management System ===");
@@ -53,7 +55,7 @@ public class ConsoleUI {
                 case "3": taMenu(); break;
                 case "4": permanentInstructorMenu(); break;
                 case "5": visitingInstructorMenu(); break;
-                case "6": running = false; break;
+                case "6": running = false; Logger.info("System", "System Exited"); break;
                 default: System.out.println("Invalid choice.");
             }
         }
@@ -62,6 +64,7 @@ public class ConsoleUI {
 
     // --- ADMIN MENU ---
     private void adminMenu() {
+        Logger.info("Admin", "Logged in to Admin menu");
         while (true) {
             System.out.println("\n--- Academic Office Admin Menu ---");
             System.out.println("1. Create Course");
@@ -132,6 +135,7 @@ public class ConsoleUI {
                         System.out.print("Student ID: "); String sId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.students.add(new NormalStudent(id, name, email, phone, sId));
                         System.out.println("Student created.");
+                        Logger.info("Admin", "Created Student: " + sId);
                     } else if (um.equals("2")) {
                         System.out.print("ID: "); String id = scanner.nextLine();
                         System.out.print("Name: "); String name = scanner.nextLine();
@@ -140,6 +144,7 @@ public class ConsoleUI {
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new PermanentInstructor(id, name, email, phone, tId));
                         System.out.println("Permanent Instructor created.");
+                        Logger.info("Admin", "Created Permanent Instructor: " + tId);
                     } else if (um.equals("3")) {
                         System.out.print("ID: "); String id = scanner.nextLine();
                         System.out.print("Name: "); String name = scanner.nextLine();
@@ -148,6 +153,7 @@ public class ConsoleUI {
                         System.out.print("Teacher ID: "); String tId = scanner.nextLine();
                         com.fast.campus.util.CampusRegistry.instructors.add(new VisitingInstructor(id, name, email, phone, tId));
                         System.out.println("Visiting Instructor created.");
+                        Logger.info("Admin", "Created Visiting Instructor: " + tId);
                     } else if (um.equals("4")) {
                         System.out.print("Student ID to promote: "); String sId = scanner.nextLine();
                         Student s = studentService.findStudent(sId);
@@ -156,6 +162,7 @@ public class ConsoleUI {
                             com.fast.campus.util.CampusRegistry.students.remove(s);
                             com.fast.campus.util.CampusRegistry.students.add(ta);
                             System.out.println("Student promoted to TA successfully.");
+                            Logger.info("Admin", "Promoted Student to TA: " + sId);
                         } else {
                             System.out.println("Student not found or already a TA.");
                         }
@@ -175,6 +182,7 @@ public class ConsoleUI {
         Student student = studentService.findStudent(scanner.nextLine());
         if (student == null) { System.out.println("Student not found!"); return; }
 
+        Logger.info(student.getStudentId(), "Logged in to Student menu");
         while (true) {
             System.out.println("\n--- Student Menu (" + student.getName() + ") ---");
             System.out.println("1. Browse Courses");
@@ -253,6 +261,7 @@ public class ConsoleUI {
         if (!(s instanceof TeachingAssistant)) { System.out.println("You are not a TA!"); return; }
         TeachingAssistant ta = (TeachingAssistant) s;
 
+        Logger.info(ta.getStudentId(), "Logged in to TA menu");
         while (true) {
             System.out.println("\n--- TA Menu (" + ta.getName() + ") ---");
             System.out.println("1. View Assigned Section & Students");
@@ -312,6 +321,7 @@ public class ConsoleUI {
         if (!(inst instanceof PermanentInstructor)) { System.out.println("Not a Permanent Instructor!"); return; }
         PermanentInstructor pInst = (PermanentInstructor) inst;
 
+        Logger.info(pInst.getTeacherId(), "Logged in to Permanent Instructor menu");
         while (true) {
             System.out.println("\n--- Permanent Instructor Menu (" + pInst.getName() + ") ---");
             System.out.println("1. View Assigned Sections & Enrolled Students");
@@ -370,6 +380,7 @@ public class ConsoleUI {
         if (!(inst instanceof VisitingInstructor)) { System.out.println("Not a Visiting Instructor!"); return; }
         VisitingInstructor vInst = (VisitingInstructor) inst;
 
+        Logger.info(vInst.getTeacherId(), "Logged in to Visiting Instructor menu");
         while (true) {
             System.out.println("\n--- Visiting Instructor Menu (" + vInst.getName() + ") ---");
             System.out.println("1. View Assigned Sections & Enrolled Students");

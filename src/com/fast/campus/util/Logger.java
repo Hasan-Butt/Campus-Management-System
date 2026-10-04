@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class Logger {
 
-    private static final String LOG_FILE = "logs/campus.log";
+    private static final String LOG_FILE = "logs/logs.log";
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
