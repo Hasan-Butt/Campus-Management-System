@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 public class Logger {
 
     private static final String LOG_FILE = "logs/logs.log";
+    private static final boolean ECHO_TO_CONSOLE = Boolean.getBoolean("campus.log.console");
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -39,7 +40,11 @@ public class Logger {
     private static void log(String level, String actor, String event) {
         String timestamp = LocalDateTime.now().format(FORMATTER);
         String entry = String.format("[%s] [%s] [%s] %s", timestamp, level, actor, event);
-        System.out.println(entry);
+        // Log lines go to logs/logs.log only, so they don't clutter the console menus.
+        // Run with -Dcampus.log.console=true to also echo them (useful when debugging).
+        if (ECHO_TO_CONSOLE) {
+            System.out.println(entry);
+        }
         writeToFile(entry);
     }
 

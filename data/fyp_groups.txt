@@ -1,4 +1,3 @@
-# FYP Groups data file
-# Format: FYPGROUP|groupId|title|supervisorId
-FYPGROUP|FYP001|AI-Based Campus Management System|1122
-FYPGROUP|FYP002|Blockchain for Academic Records|1122
+# Format: FYPGROUP|groupId|title|supervisorId|memberStudentIds(comma-separated)|description
+FYPGROUP|FYP001|AI-Based Campus Management System|1122|22K-1234,23L-3022|Smart scheduling and analytics for campus operations
+FYPGROUP|FYP002|Blockchain for Academic Records|1122|22I-3001|Tamper-proof transcripts using a permissioned ledger

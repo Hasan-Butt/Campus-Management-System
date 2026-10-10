@@ -1,18 +1,14 @@
 package com.fast.campus.service;
 
 import com.fast.campus.enums.Day;
-import com.fast.campus.enums.EnrollmentStatus;
 import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.exception.CourseException;
-import com.fast.campus.exception.CourseFullException;
-import com.fast.campus.exception.CourseClashException;
+import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
 import com.fast.campus.util.CampusRegistry;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -158,25 +154,25 @@ public class AcademicOfficeService {
         // Validate input
         if (course == null) {
             Logger.error("AcademicOfficeService", "Cannot create course — course is null");
-            throw new CourseException("Course cannot be null");
+            throw new InvalidCourseOperationException("Course cannot be null");
         }
 
         if (course.getCourseCode() == null || course.getCourseCode().trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot create course — course code is null or empty");
-            throw new CourseException("Course code cannot be null or empty");
+            throw new InvalidCourseOperationException("Course code cannot be null or empty");
         }
 
         if (course.getTitle() == null || course.getTitle().trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot create course — title is null or empty");
-            throw new CourseException("Course title cannot be null or empty");
+            throw new InvalidCourseOperationException("Course title cannot be null or empty");
         }
 
         if (course.getCreditHours() <= 0) {
             Logger.error("AcademicOfficeService",
                     "Cannot create course — credit hours must be positive");
-            throw new CourseException("Credit hours must be greater than 0");
+            throw new InvalidCourseOperationException("Credit hours must be greater than 0");
         }
 
         // Check for duplicate course code
@@ -184,7 +180,7 @@ public class AcademicOfficeService {
         if (existing != null) {
             String errorMsg = "Course with code " + course.getCourseCode() + " already exists";
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Add to in-memory list
@@ -219,14 +215,14 @@ public class AcademicOfficeService {
         if (courseCode == null || courseCode.trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot update course — course code is null or empty");
-            throw new CourseException("Course code cannot be null or empty");
+            throw new InvalidCourseOperationException("Course code cannot be null or empty");
         }
 
         Course course = findCourseByCode(courseCode);
         if (course == null) {
             String errorMsg = "Course not found: " + courseCode;
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Apply updates
@@ -289,25 +285,25 @@ public class AcademicOfficeService {
     public void createSection(Section section) throws CourseException {
         if (section == null) {
             Logger.error("AcademicOfficeService", "Cannot create section — section is null");
-            throw new CourseException("Section cannot be null");
+            throw new InvalidCourseOperationException("Section cannot be null");
         }
 
         if (section.getSectionId() == null || section.getSectionId().trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot create section — section ID is null or empty");
-            throw new CourseException("Section ID cannot be null or empty");
+            throw new InvalidCourseOperationException("Section ID cannot be null or empty");
         }
 
         if (section.getCourse() == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot create section — course reference is null");
-            throw new CourseException("Section must be associated with a course");
+            throw new InvalidCourseOperationException("Section must be associated with a course");
         }
 
         if (section.getCapacity() <= 0) {
             Logger.error("AcademicOfficeService",
                     "Cannot create section — capacity must be positive");
-            throw new CourseException("Section capacity must be greater than 0");
+            throw new InvalidCourseOperationException("Section capacity must be greater than 0");
         }
 
         // Check for duplicate section ID
@@ -315,7 +311,7 @@ public class AcademicOfficeService {
         if (existing != null) {
             String errorMsg = "Section with ID " + section.getSectionId() + " already exists";
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Add to in-memory list
@@ -348,20 +344,20 @@ public class AcademicOfficeService {
         if (sectionId == null || sectionId.trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot update section — section ID is null or empty");
-            throw new CourseException("Section ID cannot be null or empty");
+            throw new InvalidCourseOperationException("Section ID cannot be null or empty");
         }
 
         Section section = findSectionById(sectionId);
         if (section == null) {
             String errorMsg = "Section not found: " + sectionId;
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         if (newCapacity <= 0) {
             Logger.error("AcademicOfficeService",
                     "Cannot update section — capacity must be positive");
-            throw new CourseException("Section capacity must be greater than 0");
+            throw new InvalidCourseOperationException("Section capacity must be greater than 0");
         }
 
         int currentEnrolled = section.getEnrollments().size();
@@ -393,13 +389,13 @@ public class AcademicOfficeService {
         if (section == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot set capacity — section is null");
-            throw new CourseException("Section cannot be null");
+            throw new InvalidCourseOperationException("Section cannot be null");
         }
 
         if (capacity <= 0) {
             Logger.error("AcademicOfficeService",
                     "Cannot set capacity — must be positive");
-            throw new CourseException("Capacity must be greater than 0");
+            throw new InvalidCourseOperationException("Capacity must be greater than 0");
         }
 
         int oldCapacity = section.getCapacity();
@@ -426,20 +422,20 @@ public class AcademicOfficeService {
         if (sectionId == null || sectionId.trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign room — section ID is null or empty");
-            throw new CourseException("Section ID cannot be null or empty");
+            throw new InvalidCourseOperationException("Section ID cannot be null or empty");
         }
 
         if (room == null || room.trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign room — room is null or empty");
-            throw new CourseException("Room cannot be null or empty");
+            throw new InvalidCourseOperationException("Room cannot be null or empty");
         }
 
         Section section = findSectionById(sectionId);
         if (section == null) {
             String errorMsg = "Section not found: " + sectionId;
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         if (section.getSchedule() != null) {
@@ -447,7 +443,7 @@ public class AcademicOfficeService {
         } else {
             Logger.warn("AcademicOfficeService",
                     "Section " + sectionId + " has no schedule — cannot assign room without a schedule");
-            throw new CourseException("Section " + sectionId
+            throw new InvalidCourseOperationException("Section " + sectionId
                     + " has no schedule. Create a schedule before assigning a room.");
         }
 
@@ -469,12 +465,12 @@ public class AcademicOfficeService {
         if (section == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign room — section is null");
-            throw new CourseException("Section cannot be null");
+            throw new InvalidCourseOperationException("Section cannot be null");
         }
         if (schedule == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign room — schedule is null");
-            throw new CourseException("Schedule cannot be null");
+            throw new InvalidCourseOperationException("Schedule cannot be null");
         }
 
         section.setSchedule(schedule);
@@ -505,20 +501,20 @@ public class AcademicOfficeService {
         if (sectionId == null || sectionId.trim().isEmpty()) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign instructor — section ID is null or empty");
-            throw new CourseException("Section ID cannot be null or empty");
+            throw new InvalidCourseOperationException("Section ID cannot be null or empty");
         }
 
         if (instructor == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign instructor — instructor is null");
-            throw new CourseException("Instructor cannot be null");
+            throw new InvalidCourseOperationException("Instructor cannot be null");
         }
 
         Section section = findSectionById(sectionId);
         if (section == null) {
             String errorMsg = "Section not found: " + sectionId;
             Logger.error("AcademicOfficeService", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Log if replacing an existing instructor
@@ -554,12 +550,12 @@ public class AcademicOfficeService {
         if (section == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign instructor — section is null");
-            throw new CourseException("Section cannot be null");
+            throw new InvalidCourseOperationException("Section cannot be null");
         }
         if (instructor == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot assign instructor — instructor is null");
-            throw new CourseException("Instructor cannot be null");
+            throw new InvalidCourseOperationException("Instructor cannot be null");
         }
 
         // Assign at model level
@@ -627,14 +623,14 @@ public class AcademicOfficeService {
         if (request == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot approve request — request is null");
-            throw new CourseException("Request cannot be null");
+            throw new InvalidCourseOperationException("Request cannot be null");
         }
 
         if (request.getStatus() != RequestStatus.PENDING) {
             String errorMsg = "Request " + request.getRequestId()
                     + " is already " + request.getStatus() + " — cannot approve";
             Logger.warn("AcademicOfficeAdmin", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Update status at model level
@@ -656,14 +652,14 @@ public class AcademicOfficeService {
         if (request == null) {
             Logger.error("AcademicOfficeService",
                     "Cannot reject request — request is null");
-            throw new CourseException("Request cannot be null");
+            throw new InvalidCourseOperationException("Request cannot be null");
         }
 
         if (request.getStatus() != RequestStatus.PENDING) {
             String errorMsg = "Request " + request.getRequestId()
                     + " is already " + request.getStatus() + " — cannot reject";
             Logger.warn("AcademicOfficeAdmin", errorMsg);
-            throw new CourseException(errorMsg);
+            throw new InvalidCourseOperationException(errorMsg);
         }
 
         // Update status at model level
@@ -865,41 +861,51 @@ public class AcademicOfficeService {
         FileManager.writeAllLines("data/courses.txt", lines);
     }
 
+    /**
+     * Reloads sections in the same format the app writes
+     * (SECTION|sectionId|courseCode|capacity|day|startTime|endTime|room|instructorId).
+     */
     public void loadSections() {
         sections.clear();
-        List<String> lines = FileManager.readLines("data/sections.txt");
-        for (String line : lines) {
-            if (line.startsWith("#") || line.trim().isEmpty()) continue;
-            String[] p = line.split("\\|");
-            if (p.length >= 8 && p[0].equals("SECTION")) {
-                Course c = CampusRegistry.findCourse(p[3]);
-                if (c == null) continue;
-                
-                com.fast.campus.enums.Day day = com.fast.campus.enums.Day.valueOf(p[4]);
-                Schedule s = new Schedule(day, p[5], p[6], p[7]);
-                Section sec = new Section(p[1], Integer.parseInt(p[2]), c, s);
-                if (p.length > 8 && !p[8].equals("null")) {
-                    Instructor inst = CampusRegistry.findInstructor(p[8]);
-                    if (inst != null) {
-                        sec.assignInstructor(inst);
-                        inst.addSection(sec);
-                    }
-                }
-                sections.add(sec);
-            }
+        for (Course course : courses) {
+            course.getSections().clear();
         }
+        loadSectionData();
+        restoreInstructorAssignments();
     }
 
+    /** Writes sections in the same format loadSectionData() reads. */
     public void saveSections() {
-        List<String> lines = new ArrayList<>();
-        lines.add("# Format: SECTION|sectionId|capacity|courseCode|day|startTime|endTime|room|instructorId");
-        for (Section s : sections) {
-            String inst = (s.getInstructor() != null) ? s.getInstructor().getTeacherId() : "null";
-            lines.add("SECTION|" + s.getSectionId() + "|" + s.getCapacity() + "|" + s.getCourse().getCourseCode() + "|" + 
-                      s.getSchedule().getDay() + "|" + s.getSchedule().getStartTime() + "|" + s.getSchedule().getEndTime() + "|" + 
-                      s.getSchedule().getRoom() + "|" + inst);
+        rewriteSectionsFile();
+    }
+
+    /**
+     * Re-links each section to its instructor (9th field of sections.txt).
+     * Must run after instructors are loaded (InstructorService), which happens after this
+     * service's constructor — so ConsoleUI calls it once all services exist.
+     */
+    public void restoreInstructorAssignments() {
+        int linked = 0;
+        for (String line : FileManager.readLines(SECTIONS_FILE)) {
+            String[] p = line.split("\\|");
+            if (p.length < 9 || !p[0].equals("SECTION")) {
+                continue;
+            }
+            String instructorId = p[8].trim();
+            if (instructorId.isEmpty() || instructorId.equals("NONE") || instructorId.equals("null")) {
+                continue;
+            }
+            Section section = findSectionById(p[1].trim());
+            Instructor instructor = CampusRegistry.findInstructor(instructorId);
+            if (section == null || instructor == null) {
+                Logger.warn("AcademicOfficeService", "Could not restore instructor " + instructorId
+                        + " for section " + p[1]);
+                continue;
+            }
+            section.assignInstructor(instructor); // also adds the section to the instructor
+            linked++;
         }
-        FileManager.writeAllLines("data/sections.txt", lines);
+        Logger.info("AcademicOfficeService", "Restored " + linked + " section-instructor assignment(s)");
     }
 
 }

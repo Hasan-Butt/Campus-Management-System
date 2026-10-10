@@ -1,7 +1,7 @@
 package com.fast.campus.service;
 
 import com.fast.campus.enums.AttendanceStatus;
-import com.fast.campus.exception.FYPException;
+import com.fast.campus.exception.InvalidFYPEvaluationException;
 import com.fast.campus.exception.InvalidFYPGroupException;
 import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.model.*;
@@ -54,58 +54,9 @@ public class InstructorService {
         loadFYPEvaluations();
     }
     
-    // ================================================================
-    // DATA LOADING METHODS
-    // ================================================================
-    
-    /**
-     * Load instructor records from file on initialization.
-     * Format: INSTRUCTOR|teacherId|name|email|phone|type
-     */
-    public void loadInstructorData() {
-        List<String> lines = FileManager.readLines(INSTRUCTORS_FILE);
-        // Note: Full reconstruction would require re-creating Instructor objects
-        // For now, we log the count. Full implementation would parse and instantiate.
-        Logger.info("InstructorService", "Loaded " + lines.size() + " instructor records");
-    }
+    // Data is loaded by loadInstructors(), loadAttendance(), loadFYPGroups(), loadFYPMeetings()
+    // and loadFYPEvaluations() (called from the constructor; see the end of this class).
 
-    /**
-     * Load attendance records from file on initialization.
-     * Format: ATTENDANCE|studentId|sectionId|date|status
-     */
-    public void loadAttendanceData() {
-        List<String> lines = FileManager.readLines(ATTENDANCE_FILE);
-        // Note: Full reconstruction would require Student/Section references
-        Logger.info("InstructorService", "Loaded " + lines.size() + " attendance records");
-    }
-    
-    /**
-     * Load FYP groups from file on initialization.
-     * Format: FYPGROUP|groupId|title|description|supervisorId
-     */
-    public void loadFYPGroupData() {
-        List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP groups");
-    }
-    
-    /**
-     * Load FYP meetings from file on initialization.
-     * Format: FYPMEETING|meetingId|groupId|date|agenda|notes
-     */
-    public void loadFYPMeetingData() {
-        List<String> lines = FileManager.readLines(FYPMEETINGS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP meetings");
-    }
-    
-    /**
-     * Load FYP evaluations from file on initialization.
-     * Format: FYPEVALUATION|evaluationId|groupId|date|score|feedback
-     */
-    public void loadFYPEvaluationData() {
-        List<String> lines = FileManager.readLines(FYPEVALUATIONS_FILE);
-        Logger.info("InstructorService", "Loaded " + lines.size() + " FYP evaluations");
-    }
-    
     // ================================================================
     // INSTRUCTOR VIEWING OPERATIONS
     // ================================================================
@@ -188,7 +139,6 @@ public class InstructorService {
         
         return students;
     }
-
 
     // ================================================================
     // ATTENDANCE MANAGEMENT
@@ -424,7 +374,6 @@ public class InstructorService {
         return percentage;
     }
 
-
     // ================================================================
     // TEACHING ASSISTANT ASSIGNMENT (PermanentInstructor only)
     // ================================================================
@@ -464,19 +413,11 @@ public class InstructorService {
                     + section.getTeachingAssistant().getName());
         }
         
-        instructor.assignTA(student, section);
-        
-        // Assign the TA to the section
-        section.assignTA(student);
-        
-        // Persist the assignment to instructors file
-        String record = String.format("TA_ASSIGNMENT|%s|%s|%s|%s",
-                student.getStudentId(),
-                section.getSectionId(),
-                instructor.getTeacherId(),
-                LocalDate.now().toString());
-        FileManager.appendLine(INSTRUCTORS_FILE, record);
-        
+        instructor.assignTA(student, section); // also links the new TA to the section
+
+        // The TA (role + section) is persisted in students.txt by StudentService.promoteToTA,
+        // so nothing is appended to instructors.txt here (it only holds INSTRUCTOR records).
+
         Logger.info(instructor.getTeacherId(),
                 "TA assigned: " + student.getName() 
                 + " (ID: " + student.getStudentId() + ") to section " 
@@ -523,21 +464,13 @@ public class InstructorService {
         // Add to in-memory storage
         fypGroups.add(group);
         
-        // Persist to file
-        String supervisorId = group.getSupervisor() != null 
-                ? group.getSupervisor().getTeacherId() 
+        // Persist to file (same format as saveFYPGroups/loadFYPGroups)
+        saveFYPGroups();
+        String supervisorId = group.getSupervisor() != null
+                ? group.getSupervisor().getTeacherId()
                 : "NONE";
-        
         int memberCount = group.getMembers() != null ? group.getMembers().size() : 0;
-        
-        String record = String.format("FYPGROUP|%s|%s|%s|%s|%d",
-                group.getGroupId(),
-                group.getTitle(),
-                group.getDescription() != null ? group.getDescription() : "",
-                supervisorId,
-                memberCount);
-        FileManager.appendLine(FYPGROUPS_FILE, record);
-        
+
         Logger.info("InstructorService", 
                 "FYP group created: " + group.getGroupId() 
                 + " - " + group.getTitle()
@@ -641,31 +574,9 @@ public class InstructorService {
      * Helper method to update an FYP group record in the file.
      */
     private void updateFYPGroupInFile(FYPGroup group) {
-        List<String> lines = FileManager.readLines(FYPGROUPS_FILE);
-        List<String> updatedLines = new ArrayList<>();
-        
-        for (String line : lines) {
-            String[] parts = line.split("\\|");
-            if (parts.length >= 2 && parts[0].equals("FYPGROUP") && parts[1].equals(group.getGroupId())) {
-                // Update this group's record
-                String supervisorId = group.getSupervisor() != null 
-                        ? group.getSupervisor().getTeacherId() 
-                        : "NONE";
-                int memberCount = group.getMembers() != null ? group.getMembers().size() : 0;
-                
-                line = String.format("FYPGROUP|%s|%s|%s|%s|%d",
-                        group.getGroupId(),
-                        group.getTitle(),
-                        group.getDescription() != null ? group.getDescription() : "",
-                        supervisorId,
-                        memberCount);
-            }
-            updatedLines.add(line);
-        }
-        
-        FileManager.writeAllLines(FYPGROUPS_FILE, updatedLines);
+        // Rewrite the whole file in the one format loadFYPGroups understands
+        saveFYPGroups();
     }
-
 
     // ================================================================
     // FYP MEETING MANAGEMENT
@@ -809,21 +720,21 @@ public class InstructorService {
      */
     public void evaluateFYPIdea(PermanentInstructor instructor, FYPGroup group,
                                 FYPEvaluation evaluation, double score, String feedback)
-            throws UnauthorizedActionException {
-        
+            throws UnauthorizedActionException, InvalidFYPEvaluationException {
+
         if (instructor == null) {
             Logger.error("InstructorService", "Cannot evaluate FYP - instructor is null");
             throw new UnauthorizedActionException("Instructor cannot be null");
         }
-        
+
         if (group == null) {
             Logger.error(instructor.getTeacherId(), "Cannot evaluate FYP - group is null");
             throw new UnauthorizedActionException("FYP group cannot be null");
         }
-        
+
         if (evaluation == null) {
             Logger.error(instructor.getTeacherId(), "Cannot evaluate FYP - evaluation is null");
-            throw new UnauthorizedActionException("Evaluation cannot be null");
+            throw new InvalidFYPEvaluationException("Evaluation cannot be null");
         }
         
         // Verify that the instructor supervises this group
@@ -834,10 +745,11 @@ public class InstructorService {
             throw new UnauthorizedActionException(errorMsg);
         }
         
-        // Validate score (typically 0-100)
+        // Validate score: must be 0-100
         if (score < 0 || score > 100) {
-            Logger.warn(instructor.getTeacherId(),
-                    "FYP evaluation score " + score + " is outside typical range [0-100]");
+            Logger.error(instructor.getTeacherId(),
+                    "FYP evaluation score " + score + " is outside the range [0-100]");
+            throw new InvalidFYPEvaluationException("Score must be between 0 and 100");
         }
         
         // Perform evaluation
@@ -846,16 +758,9 @@ public class InstructorService {
         group.addEvaluation(evaluation);
         fypEvaluations.add(evaluation);
         
-        // Persist to file
-        String record = String.format("FYPEVALUATION|%s|%s|%s|%s|%.2f|%s",
-                evaluation.getEvaluationId(),
-                group.getGroupId(),
-                instructor.getTeacherId(),
-                evaluation.getEvaluationDate().toString(),
-                score,
-                feedback != null ? feedback : "");
-        FileManager.appendLine(FYPEVALUATIONS_FILE, record);
-        
+        // Persist (one format for save and load)
+        saveFYPEvaluations();
+
         Logger.info(instructor.getTeacherId(),
                 "FYP evaluated for group: " + group.getGroupId()
                 + " - Score: " + String.format("%.2f/100", score)
@@ -863,14 +768,17 @@ public class InstructorService {
     }
     
     /**
-     * Provides feedback for an FYP group (can be done without formal evaluation).
-     * 
+     * Adds (or replaces) the feedback on one of a group's evaluations
+     * (UML: PermanentInstructor.provideFYPFeedback(evaluation, feedback)).
+     *
      * @param instructor the permanent instructor providing feedback
-     * @param group the FYP group
+     * @param group the FYP group the evaluation belongs to
+     * @param evaluation the evaluation to attach the feedback to
      * @param feedback the feedback text
      * @throws UnauthorizedActionException if instructor doesn't supervise the group
      */
-    public void provideFYPFeedback(PermanentInstructor instructor, FYPGroup group, String feedback)
+    public void provideFYPFeedback(PermanentInstructor instructor, FYPGroup group,
+                                   FYPEvaluation evaluation, String feedback)
             throws UnauthorizedActionException {
         
         if (instructor == null) {
@@ -896,14 +804,14 @@ public class InstructorService {
             throw new UnauthorizedActionException(errorMsg);
         }
         
-        // Log the feedback (could also be persisted separately if needed)
-        String record = String.format("FYP_FEEDBACK|%s|%s|%s|%s",
-                group.getGroupId(),
-                instructor.getTeacherId(),
-                LocalDate.now().toString(),
-                feedback);
-        FileManager.appendLine(FYPEVALUATIONS_FILE, record);
-        
+        if (evaluation == null || !group.getEvaluations().contains(evaluation)) {
+            Logger.error(instructor.getTeacherId(), "Evaluation not found in group " + group.getGroupId());
+            throw new UnauthorizedActionException("Evaluation does not belong to FYP group " + group.getGroupId());
+        }
+
+        instructor.provideFYPFeedback(evaluation, feedback);
+        saveFYPEvaluations(); // feedback is stored with its evaluation, so it survives a restart
+
         Logger.info(instructor.getTeacherId(),
                 "Provided feedback for FYP group " + group.getGroupId()
                 + ": " + feedback.substring(0, Math.min(50, feedback.length())) + "...");
@@ -941,7 +849,7 @@ public class InstructorService {
                 instructor.getTeacherId(),
                 instructor.getName(),
                 instructor.getEmail(),
-                instructor.getPhoneNumber(),
+                instructor.getPhone(),
                 type);
         
         FileManager.appendLine(INSTRUCTORS_FILE, record);
@@ -976,7 +884,7 @@ public class InstructorService {
                         instructor.getTeacherId(),
                         instructor.getName(),
                         instructor.getEmail(),
-                        instructor.getPhoneNumber(),
+                        instructor.getPhone(),
                         type);
                 found = true;
             }
@@ -1192,7 +1100,7 @@ public class InstructorService {
         lines.add("# Format: INSTRUCTOR|type(PERM/VISIT)|id|name|email|phone|teacherId");
         for (Instructor i : instructors) {
             String type = (i instanceof PermanentInstructor) ? "PERM" : "VISIT";
-            lines.add("INSTRUCTOR|" + type + "|" + i.getId() + "|" + i.getName() + "|" + i.getEmail() + "|" + i.getPhoneNumber() + "|" + i.getTeacherId());
+            lines.add("INSTRUCTOR|" + type + "|" + i.getId() + "|" + i.getName() + "|" + i.getEmail() + "|" + i.getPhone() + "|" + i.getTeacherId());
         }
         FileManager.writeAllLines("data/instructors.txt", lines);
     }
@@ -1204,11 +1112,22 @@ public class InstructorService {
             if (line.startsWith("#") || line.trim().isEmpty()) continue;
             String[] p = line.split("\\|");
             if (p.length >= 4 && p[0].equals("FYPGROUP")) {
-                FYPGroup g = new FYPGroup(p[1], p[2], "");
+                // Format: FYPGROUP|groupId|title|supervisorId|memberStudentIds(comma-separated)|description
+                FYPGroup g = new FYPGroup(p[1], p[2], p.length > 5 ? p[5] : "");
                 Instructor inst = CampusRegistry.findInstructor(p[3]);
                 if (inst instanceof PermanentInstructor) {
                     g.assignSupervisor((PermanentInstructor) inst);
                     ((PermanentInstructor) inst).addSupervisedGroup(g);
+                }
+                if (p.length > 4 && !p[4].trim().isEmpty()) {
+                    for (String studentId : p[4].split(",")) {
+                        Student member = CampusRegistry.findStudent(studentId.trim());
+                        if (member != null) {
+                            g.addMember(member);
+                        } else {
+                            Logger.warn("InstructorService", "FYP group " + p[1] + ": unknown member " + studentId);
+                        }
+                    }
                 }
                 fypGroups.add(g);
             }
@@ -1218,10 +1137,16 @@ public class InstructorService {
 
     public void saveFYPGroups() {
         List<String> lines = new ArrayList<>();
-        lines.add("# Format: FYPGROUP|groupId|title|supervisorId");
+        lines.add("# Format: FYPGROUP|groupId|title|supervisorId|memberStudentIds(comma-separated)|description");
         for (FYPGroup g : fypGroups) {
             String sup = (g.getSupervisor() != null) ? g.getSupervisor().getTeacherId() : "null";
-            lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle() + "|" + sup);
+            List<String> memberIds = new ArrayList<>();
+            for (Student member : g.getMembers()) {
+                memberIds.add(member.getStudentId());
+            }
+            String description = g.getDescription() != null ? g.getDescription().replace("|", "/") : "";
+            lines.add("FYPGROUP|" + g.getGroupId() + "|" + g.getTitle().replace("|", "/") + "|" + sup
+                    + "|" + String.join(",", memberIds) + "|" + description);
         }
         FileManager.writeAllLines(FYPGROUPS_FILE, lines);
         Logger.info("InstructorService", "Saved " + fypGroups.size() + " FYP groups to " + FYPGROUPS_FILE);
@@ -1281,13 +1206,12 @@ public class InstructorService {
                 // Format: FYPEVALUATION|evaluationId|groupId|instructorId|date|score|feedback
                 FYPGroup group = getFYPGroupById(p[2]);
                 if (group != null) {
-                    // Create evaluation with just the ID, then set the other fields
-                    FYPEvaluation evaluation = new FYPEvaluation(p[1]);
-                    double score = Double.parseDouble(p[5]);
-                    evaluation.evaluate(score); // This sets the score
-                    if (p.length > 6 && !p[6].isEmpty()) {
-                        evaluation.addFeedback(p[6]);
-                    }
+                    // Restore with the original date, score, feedback and evaluator
+                    Instructor inst = CampusRegistry.findInstructor(p[3]);
+                    Evaluator evaluator = inst instanceof Evaluator ? (Evaluator) inst : null;
+                    String feedback = (p.length > 6 && !p[6].isEmpty()) ? p[6] : null;
+                    FYPEvaluation evaluation = new FYPEvaluation(p[1], evaluator,
+                            LocalDate.parse(p[4]), Double.parseDouble(p[5]), feedback);
                     fypEvaluations.add(evaluation);
                     group.addEvaluation(evaluation);
                 }
@@ -1302,21 +1226,22 @@ public class InstructorService {
         for (FYPEvaluation eval : fypEvaluations) {
             // Find the group this evaluation belongs to
             String groupId = "UNKNOWN";
-            String instructorId = "UNKNOWN";
+            String instructorId = eval.getEvaluator() != null ? eval.getEvaluator().getEvaluatorId() : "UNKNOWN";
             for (FYPGroup group : fypGroups) {
                 if (group.getEvaluations().contains(eval)) {
                     groupId = group.getGroupId();
-                    if (group.getSupervisor() != null) {
+                    if (eval.getEvaluator() == null && group.getSupervisor() != null) {
                         instructorId = group.getSupervisor().getTeacherId();
                     }
                     break;
                 }
             }
-            lines.add("FYPEVALUATION|" + eval.getEvaluationId() + "|" + groupId + "|" 
-                    + instructorId + "|" 
-                    + eval.getEvaluationDate().toString() + "|" 
-                    + eval.getScore() + "|" 
-                    + (eval.getFeedback() != null ? eval.getFeedback() : ""));
+            String feedback = eval.getFeedback() != null ? eval.getFeedback().replace("|", "/") : "";
+            lines.add("FYPEVALUATION|" + eval.getEvaluationId() + "|" + groupId + "|"
+                    + instructorId + "|"
+                    + eval.getEvaluationDate().toString() + "|"
+                    + eval.getScore() + "|"
+                    + feedback);
         }
         FileManager.writeAllLines(FYPEVALUATIONS_FILE, lines);
         Logger.info("InstructorService", "Saved " + fypEvaluations.size() + " FYP evaluations to " + FYPEVALUATIONS_FILE);

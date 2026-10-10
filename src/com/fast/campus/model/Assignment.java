@@ -11,6 +11,9 @@ import java.util.List;
  */
 public class Assignment extends Assessment {
 
+    /** Late work is accepted (marked LATE) for this many days after the deadline, then rejected. */
+    public static final int LATE_GRACE_DAYS = 7;
+
     private Section section;
     private TeachingAssistant createdBy;
     private List<Submission> submissions;
@@ -43,6 +46,11 @@ public class Assignment extends Assessment {
         return LocalDate.now().isAfter(getDeadline());
     }
 
+    /** True once the late-submission grace period after the deadline is over. */
+    public boolean isClosed() {
+        return LocalDate.now().isAfter(getDeadline().plusDays(LATE_GRACE_DAYS));
+    }
+
     // --- Getters ---
 
     public Section getSection()              { return section; }
@@ -51,7 +59,9 @@ public class Assignment extends Assessment {
     @Override
     public String toString() {
         return "[" + getId() + "] " + getTitle() + " | section " + section.getSectionId()
-                + " | due " + getDeadline() + (isDeadlinePassed() ? " (closed)" : "")
+                + " | due " + getDeadline()
+                + (isClosed() ? " (closed)" : isDeadlinePassed() ? " (late submissions until "
+                        + getDeadline().plusDays(LATE_GRACE_DAYS) + ")" : "")
                 + " | " + getTotalMarks() + " marks | " + submissions.size() + " submission(s)";
     }
 }

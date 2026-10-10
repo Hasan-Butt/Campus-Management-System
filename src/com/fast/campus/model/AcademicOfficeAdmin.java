@@ -1,6 +1,5 @@
 package com.fast.campus.model;
 import java.util.List;
-import com.fast.campus.enums.RequestStatus;
 import com.fast.campus.exception.CourseException;
 import com.fast.campus.service.AcademicOfficeService;
 import com.fast.campus.util.Logger;
@@ -102,7 +101,12 @@ public class AcademicOfficeAdmin extends Administrator {
         }
     }
 
-    public List<Request> viewRequests(List<Request> requests){
+    /** UML: viewRequests() : List<Request> — all students' pending requests. */
+    public List<Request> viewRequests() {
+        List<Request> requests = new java.util.ArrayList<>();
+        for (Student student : com.fast.campus.util.CampusRegistry.students) {
+            requests.addAll(student.viewRequests());
+        }
         return service.viewRequests(requests);
     }
 

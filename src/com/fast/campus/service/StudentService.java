@@ -11,9 +11,11 @@ import com.fast.campus.enums.SubmissionStatus;
 import com.fast.campus.exception.AssessmentException;
 import com.fast.campus.exception.CampusException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.exception.InvalidRequestException;
 import com.fast.campus.exception.UnauthorizedActionException;
 import com.fast.campus.exception.UserException;
+import com.fast.campus.exception.InvalidUserException;
 import com.fast.campus.model.*;
 import com.fast.campus.util.FileManager;
 import com.fast.campus.util.Logger;
@@ -81,11 +83,11 @@ public class StudentService {
     // ================================================================
 
     public void addStudent(Student student) throws UserException {
-        if (student == null || student.getStudentId() == null || student.getStudentId().isBlank()) {
-            throw new UserException("Student must have a student ID");
+        if (student == null || student.getStudentId() == null || student.getStudentId().trim().isEmpty()) {
+            throw new InvalidUserException("Student must have a student ID");
         }
         if (findStudent(student.getStudentId()) != null) {
-            throw new UserException("Student " + student.getStudentId() + " already exists");
+            throw new InvalidUserException("Student " + student.getStudentId() + " already exists");
         }
         students.add(student);
         saveStudents();
@@ -111,13 +113,31 @@ public class StudentService {
      * student in the registry, taking over their enrollments (same IDs and dates) and requests.
      * Returns the new TA object — callers must use it from now on.
      */
-    public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
+    /**
+     * Throws if the student can't become TA of this section: not a normal student, the section
+     * already has a TA, or the student is enrolled in it (a TA can't grade their own section).
+     * Call it before anything changes the section.
+     */
+    public void checkCanPromoteToTA(Student student, Section section) throws UserException, CourseException {
         if (!(student instanceof NormalStudent)) {
-            throw new UserException("Only a normal student can be promoted to TA");
+            throw new InvalidUserException("Only a normal student can be promoted to TA");
         }
         if (section == null) {
-            throw new CourseException("Section cannot be empty");
+            throw new InvalidCourseOperationException("Section cannot be empty");
         }
+        TeachingAssistant currentTA = section.getTeachingAssistant();
+        if (currentTA != null && students.contains(currentTA)) {
+            throw new InvalidCourseOperationException("Section " + section.getSectionId()
+                    + " already has a TA: " + currentTA.getName());
+        }
+        if (student.getEnrolledSections().contains(section)) {
+            throw new InvalidUserException(student.getName() + " is enrolled in " + section.getSectionId()
+                    + " and cannot be its TA");
+        }
+    }
+
+    public TeachingAssistant promoteToTA(Student student, Section section) throws UserException, CourseException {
+        checkCanPromoteToTA(student, section);
         TeachingAssistant ta = new TeachingAssistant((NormalStudent) student);
 
         // Move enrollments: free the old object's seat, then enroll the TA with the same record
@@ -137,6 +157,7 @@ public class StudentService {
         }
         ta.calculateTotalCreditHours();
         ta.viewRequests().addAll(student.viewRequests());
+        replaceStudentEverywhere(student, ta);
 
         students.set(students.indexOf(student), ta);
         section.assignTA(ta); // also tells the TA its section
@@ -145,6 +166,36 @@ public class StudentService {
         saveRequests();
         Logger.info("StudentService", student.getStudentId() + " promoted to TA of section " + section.getSectionId());
         return ta;
+    }
+
+    /**
+     * Points every other record at the new TA object instead of the old student object,
+     * so nothing in this session keeps a stale copy (attendance, FYP groups, submissions).
+     */
+    private void replaceStudentEverywhere(Student old, TeachingAssistant ta) {
+        List<Attendance> attendance = CampusRegistry.attendanceRecords;
+        for (int i = 0; i < attendance.size(); i++) {
+            Attendance a = attendance.get(i);
+            if (a.getStudent() == old) {
+                attendance.set(i, new Attendance(ta, a.getSection(), a.getDate(), a.getStatus()));
+            }
+        }
+        for (FYPGroup group : CampusRegistry.fypGroups) {
+            if (group.getMembers().contains(old)) {
+                group.removeMember(old);
+                group.addMember(ta);
+            }
+        }
+        for (Assignment assignment : assignments) {
+            List<Submission> submissions = assignment.getSubmissions();
+            for (int i = 0; i < submissions.size(); i++) {
+                Submission s = submissions.get(i);
+                if (s.getStudent() == old) {
+                    submissions.set(i, new Submission(s.getSubmissionId(), assignment, ta, s.getSubmissionDate(),
+                            s.getContent(), s.getMarks(), s.getFeedback(), s.getStatus()));
+                }
+            }
+        }
     }
 
     // ================================================================
@@ -333,12 +384,13 @@ public class StudentService {
                 }
             }
             lines.add(String.join("|", "STUDENT", s.getId(), clean(s.getName()), clean(s.getEmail()),
-                    clean(s.getPhoneNumber()), s.getStudentId(), s.getRole(), sectionId));
+                    clean(s.getPhone()), s.getStudentId(), s.getRole(), sectionId));
         }
         FileManager.writeAllLines(STUDENTS_FILE, lines);
     }
 
     public void loadStudents() {
+        students.clear(); // safe to call again (e.g. CampusRegistry.loadAll) without duplicates
         for (String line : FileManager.readLines(STUDENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 7 || !p[0].equals("STUDENT")) {
@@ -438,6 +490,7 @@ public class StudentService {
     }
 
     public void loadAssignments() {
+        assignments.clear(); // safe to call again without duplicates
         for (String line : FileManager.readLines(ASSIGNMENTS_FILE)) {
             String[] p = line.split("\\|", -1);
             if (p.length < 8 || !p[0].equals("ASSIGNMENT")) {
@@ -573,6 +626,38 @@ public class StudentService {
         list.sort(new RequestDateComparator()); // oldest first
         Logger.info("Student", student.getStudentId() + " viewed " + list.size() + " request(s)");
         return list;
+    }
+
+    /**
+     * Carries out an APPROVED course clash request: the admin has allowed the clash, so the
+     * student is enrolled in the requested section without the timetable-clash check
+     * (capacity is still checked). Does nothing if already enrolled there.
+     */
+    public void applyApprovedClashRequest(CourseClashRequest request) throws CourseException {
+        if (request == null || request.getStatus() != RequestStatus.APPROVED) {
+            return;
+        }
+        Student owner = null;
+        for (Student s : students) {
+            if (s.viewRequests().contains(request)) {
+                owner = s;
+            }
+        }
+        Section wanted = request.getRequestedSection();
+        if (owner == null || wanted == null || owner.getEnrolledSections().contains(wanted)) {
+            return;
+        }
+        // Section.enroll(Enrollment) checks capacity but not clashes — exactly what an approved clash needs
+        wanted.enroll(new Enrollment("ENR-" + wanted.getSectionId() + "-" + owner.getStudentId(),
+                owner, wanted, LocalDate.now()));
+        if (wanted.getCourse() != null && !owner.getRegisteredCourses().contains(wanted.getCourse())) {
+            owner.getRegisteredCourses().add(wanted.getCourse());
+        }
+        owner.calculateTotalCreditHours();
+        saveEnrollments();
+        Logger.info("AcademicOfficeAdmin", "Clash request " + request.getRequestId() + " approved: "
+                + owner.getStudentId() + " enrolled in " + wanted.getSectionId()
+                + " (total credit hours: " + owner.getTotalCreditHours() + ")");
     }
 
     /** Every student's requests, highest priority first — for the Academic Office Admin. */

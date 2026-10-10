@@ -52,13 +52,12 @@ public class PermanentInstructor extends Instructor implements Evaluator {
         return supervisedGroups;
     }
 
-    public FYPGroup viewFYPGroupDetails(String groupId) {
-        for (FYPGroup group : supervisedGroups) {
-            if (group.getGroupId().equals(groupId)) {
-                return group;
-            }
+    /** UML: viewFYPGroupDetails(group : FYPGroup) : String */
+    public String viewFYPGroupDetails(FYPGroup group) {
+        if (group == null || !supervisedGroups.contains(group)) {
+            return "Not a group supervised by " + getName();
         }
-        return null;
+        return group.getDetails();
     }
 
     public void scheduleFYPMeeting(FYPGroup group, FYPMeeting meeting) {
@@ -73,11 +72,12 @@ public class PermanentInstructor extends Instructor implements Evaluator {
         }
     }
 
-    public void provideFYPFeedback(FYPGroup group, String feedback) {
-        if (group != null && feedback != null) {
-            FYPEvaluation evaluation = new FYPEvaluation("EVAL_" + System.currentTimeMillis());
-            evaluation.addFeedback(feedback);
-            group.addEvaluation(evaluation);
+    /** UML: provideFYPFeedback(evaluation : FYPEvaluation, feedback : String) */
+    public void provideFYPFeedback(FYPEvaluation evaluation, String feedback) {
+        if (evaluation != null && feedback != null) {
+            // Keep the original evaluation feedback and append the new comment to it
+            String existing = evaluation.getFeedback();
+            evaluation.addFeedback(existing == null || existing.trim().isEmpty() ? feedback : existing + "; " + feedback);
         }
     }
 

@@ -1,9 +1,9 @@
 package com.fast.campus.exception;
 
 /**
- * Thrown when an FYP-related operation fails.
+ * Abstract base (UML) — thrown via a concrete subclass when an FYP-related operation fails.
  */
-public class FYPException extends CampusException {
+public abstract class FYPException extends CampusException {
 
     public FYPException(String message) {
         super(message);

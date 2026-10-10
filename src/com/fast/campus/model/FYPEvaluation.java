@@ -6,6 +6,7 @@ import java.time.LocalDate;
  * Records an FYP group's idea evaluation by a supervisor.
  *
  * <p>Owner: Saim</p>
+ * <p>UML: FYPEvaluation is "evaluated by" exactly one Evaluator.</p>
  */
 public class FYPEvaluation {
 
@@ -13,10 +14,24 @@ public class FYPEvaluation {
     private LocalDate evaluationDate;
     private double score;
     private String feedback;
+    private Evaluator evaluator;
 
     public FYPEvaluation(String evaluationId) {
+        this(evaluationId, null);
+    }
+
+    public FYPEvaluation(String evaluationId, Evaluator evaluator) {
+        this(evaluationId, evaluator, LocalDate.now(), 0, null);
+    }
+
+    /** Used when loading a saved evaluation with its original date, score and feedback. */
+    public FYPEvaluation(String evaluationId, Evaluator evaluator, LocalDate evaluationDate,
+                         double score, String feedback) {
         this.evaluationId = evaluationId;
-        this.evaluationDate = LocalDate.now();
+        this.evaluator = evaluator;
+        this.evaluationDate = evaluationDate;
+        this.score = score;
+        this.feedback = feedback;
     }
 
     // --- Domain operations ---
@@ -36,4 +51,5 @@ public class FYPEvaluation {
     public LocalDate getEvaluationDate() { return evaluationDate; }
     public double getScore()             { return score; }
     public String getFeedback()          { return feedback; }
+    public Evaluator getEvaluator()      { return evaluator; }
 }

@@ -6,6 +6,6 @@ package com.fast.campus.enums;
 public enum SubmissionStatus {
     PENDING,
     SUBMITTED,
-    LATE,
-    EVALUATED
+    EVALUATED,
+    LATE
 }

@@ -22,9 +22,12 @@ public class ConsoleUI {
     private final Scanner scanner;
 
     public ConsoleUI() {
+        // Load order matters: courses/sections -> students (+enrollments, assignments, requests)
+        // -> instructors (+attendance and FYP groups, which refer to students) -> section instructors
         this.academicService = new AcademicOfficeService();
-        this.instructorService = new InstructorService();
         this.studentService = new StudentService(academicService);
+        this.instructorService = new InstructorService();
+        academicService.restoreInstructorAssignments();
         this.scanner = new Scanner(System.in);
     }
 
@@ -39,7 +42,8 @@ public class ConsoleUI {
 
     private String prompt(String label) {
         System.out.print(label);
-        return scanner.nextLine().trim();
+        // '|' separates fields in the data files, so it can't appear inside typed text
+        return scanner.nextLine().trim().replace("|", "/");
     }
 
     private int promptInt(String label, int min, int max) {
@@ -118,148 +122,271 @@ public class ConsoleUI {
         Logger.info("Admin", "Logged in to Admin menu");
         while (true) {
             System.out.println("\n--- Academic Office Admin Menu ---");
-            System.out.println("1. Create Course");
-            System.out.println("2. Search Course");
-            System.out.println("3. Create Section");
-            System.out.println("4. Assign Instructor to Section");
-            System.out.println("5. View/Process Academic Requests");
-            System.out.println("6. User Management");
-            System.out.println("7. Back to Main Menu");
-            System.out.print("Enter choice: ");
+            System.out.println(" 1. Create Course");
+            System.out.println(" 2. Update Course");
+            System.out.println(" 3. Search Course");
+            System.out.println(" 4. View All Courses & Sections");
+            System.out.println(" 5. Create Section");
+            System.out.println(" 6. Update Section (day / time / room)");
+            System.out.println(" 7. Set Section Capacity");
+            System.out.println(" 8. Assign Room");
+            System.out.println(" 9. Assign Instructor to Section");
+            System.out.println("10. View / Approve / Reject Requests");
+            System.out.println("11. User Management");
+            System.out.println(" 0. Back to Main Menu");
 
-            String choice = scanner.nextLine();
+            String choice = prompt("Enter choice: ");
             try {
-                if (choice.equals("1")) {
-                    System.out.print("Course Code: "); String code = scanner.nextLine();
-                    System.out.print("Title: "); String title = scanner.nextLine();
-                    System.out.print("Credit Hours: "); int ch = Integer.parseInt(scanner.nextLine());
-                    academicService.createCourse(new Course(code, title, ch));
-                    System.out.println("Course created successfully.");
-                } else if (choice.equals("2")) {
-                    System.out.print("Enter Course Code: ");
-                    Course c = academicService.searchCourse(scanner.nextLine());
-                    System.out.println(c != null ? c : "Course not found.");
-                } else if (choice.equals("3")) {
-                    System.out.print("Section ID (e.g. CS101-A): "); String secId = scanner.nextLine();
-                    System.out.print("Capacity: "); int cap = Integer.parseInt(scanner.nextLine());
-                    System.out.print("Course Code: "); Course c = academicService.searchCourse(scanner.nextLine());
-                    if (c != null) {
-                        Schedule sch = new Schedule(Day.MONDAY, "08:00", "09:30", "Room-1");
-                        academicService.createSection(new Section(secId, cap, c, sch));
-                        System.out.println("Section created successfully.");
-                    } else {
-                        System.out.println("Course not found.");
+                switch (choice) {
+                    case "1": {
+                        String code = prompt("Course code: ");
+                        String title = prompt("Title: ");
+                        int creditHours = promptInt("Credit hours (1-6): ", 1, 6);
+                        academicService.createCourse(new Course(code, title, creditHours));
+                        System.out.println("Course created.");
+                        break;
                     }
-                } else if (choice.equals("4")) {
-                    System.out.print("Section ID: "); String secId = scanner.nextLine();
-                    System.out.print("Instructor ID: "); String instId = scanner.nextLine();
-                    Instructor inst = instructorService.getInstructorById(instId);
-                    if (inst != null) {
-                        academicService.assignInstructor(secId, inst);
-                        System.out.println("Instructor assigned successfully.");
-                    } else {
-                        System.out.println("Instructor not found.");
+                    case "2": {
+                        Course course = academicService.searchCourse(prompt("Course code to update: "));
+                        if (course == null) { System.out.println("Course not found."); break; }
+                        System.out.println("Current: " + course);
+                        String title = prompt("New title (press Enter to keep): ");
+                        int creditHours = promptInt("New credit hours (0 to keep, 1-6): ", 0, 6);
+                        academicService.updateCourse(course.getCourseCode(), title, creditHours);
+                        System.out.println("Updated: " + course);
+                        break;
                     }
-                } else if (choice.equals("5")) {
-                    List<Request> reqs = studentService.getAllRequests();
-                    System.out.println("Sort by: 1. Priority 2. Date");
-                    String sort = scanner.nextLine();
-                    if (sort.equals("1")) {
-                        reqs.sort(new com.fast.campus.comparator.RequestPriorityComparator());
-                    } else if (sort.equals("2")) {
-                        reqs.sort(new com.fast.campus.comparator.RequestDateComparator());
+                    case "3": {
+                        Course course = academicService.searchCourse(prompt("Course code: "));
+                        if (course == null) { System.out.println("Course not found."); break; }
+                        System.out.println(course);
+                        printList("Sections:", course.getSections(), "No sections yet.");
+                        break;
                     }
-                    printList("Requests:", reqs, "No requests submitted.");
-                    String requestId = reqs.isEmpty() ? "" : prompt("Request ID to approve/reject (press Enter to skip): ");
-                    if (!requestId.isEmpty()) {
-                        Request selected = null;
-                        for (Request r : reqs) {
-                            if (r.getRequestId().equals(requestId)) selected = r;
-                        }
-                        if (selected == null) {
-                            System.out.println("Request not found.");
-                        } else {
-                            String decision = prompt("1. Approve  2. Reject: ");
-                            if (decision.equals("1")) {
-                                academicService.approveRequest(selected);
-                            } else if (decision.equals("2")) {
-                                academicService.rejectRequest(selected);
-                            } else {
-                                System.out.println("Invalid choice — request left unchanged.");
+                    case "4":
+                        System.out.println("\nCourses and sections:");
+                        for (Course course : academicService.getCourses()) {
+                            System.out.println("  " + course);
+                            for (Section section : course.getSections()) {
+                                System.out.println("      " + describeSection(section));
                             }
-                            // AcademicOfficeService only changes the status in memory; requests.txt is saved here
-                            studentService.saveRequests();
-                            System.out.println("Now: " + selected);
                         }
+                        break;
+                    case "5": {
+                        String sectionId = prompt("Section ID (e.g. CS101-B): ");
+                        Course course = academicService.searchCourse(prompt("Course code: "));
+                        if (course == null) { System.out.println("Course not found."); break; }
+                        int capacity = promptInt("Capacity (1-500): ", 1, 500);
+                        Schedule schedule = promptSchedule();
+                        academicService.createSection(new Section(sectionId, capacity, course, schedule));
+                        System.out.println("Section created.");
+                        break;
                     }
-                } else if (choice.equals("6")) {
-                    System.out.println("1. Create Student");
-                    System.out.println("2. Create Permanent Instructor");
-                    System.out.println("3. Create Visiting Instructor");
-                    System.out.println("4. Promote Student to TA");
-                    System.out.print("Choice: ");
-                    String um = scanner.nextLine();
-                    if (um.equals("1")) {
-                        System.out.print("ID: "); String id = scanner.nextLine();
-                        System.out.print("Name: "); String name = scanner.nextLine();
-                        System.out.print("Email: "); String email = scanner.nextLine();
-                        System.out.print("Phone: "); String phone = scanner.nextLine();
-                        System.out.print("Student ID: "); String sId = scanner.nextLine();
-                        // Through StudentService so it is validated (unique ID) and saved to students.txt
-                        studentService.addStudent(new NormalStudent(id, name, email, phone, sId));
-                        System.out.println("Student created.");
-                        Logger.info("Admin", "Created Student: " + sId);
-                    } else if (um.equals("2")) {
-                        System.out.print("ID: "); String id = scanner.nextLine();
-                        System.out.print("Name: "); String name = scanner.nextLine();
-                        System.out.print("Email: "); String email = scanner.nextLine();
-                        System.out.print("Phone: "); String phone = scanner.nextLine();
-                        System.out.print("Teacher ID: "); String tId = scanner.nextLine();
-                        com.fast.campus.util.CampusRegistry.instructors.add(new PermanentInstructor(id, name, email, phone, tId));
-                        instructorService.saveInstructors();
-                        System.out.println("Permanent Instructor created.");
-                        Logger.info("Admin", "Created Permanent Instructor: " + tId);
-                    } else if (um.equals("3")) {
-                        System.out.print("ID: "); String id = scanner.nextLine();
-                        System.out.print("Name: "); String name = scanner.nextLine();
-                        System.out.print("Email: "); String email = scanner.nextLine();
-                        System.out.print("Phone: "); String phone = scanner.nextLine();
-                        System.out.print("Teacher ID: "); String tId = scanner.nextLine();
-                        com.fast.campus.util.CampusRegistry.instructors.add(new VisitingInstructor(id, name, email, phone, tId));
-                        instructorService.saveInstructors();
-                        System.out.println("Visiting Instructor created.");
-                        Logger.info("Admin", "Created Visiting Instructor: " + tId);
-                    } else if (um.equals("4")) {
-                        System.out.print("Student ID to promote: "); String sId = scanner.nextLine();
-                        Student s = studentService.findStudent(sId);
-                        if (s instanceof NormalStudent) {
-                            System.out.print("Section ID the TA will assist: ");
-                            Section sec = searchSection(scanner.nextLine());
-                            if (sec == null) {
-                                System.out.println("Section not found.");
-                            } else {
-                                // Keeps the student's enrollments/requests and saves the change
-                                studentService.promoteToTA(s, sec);
-                                System.out.println("Student promoted to TA of " + sec.getSectionId() + ".");
-                                Logger.info("Admin", "Promoted Student to TA: " + sId);
-                            }
-                        } else {
-                            System.out.println("Student not found or already a TA.");
+                    case "6": {
+                        Section section = searchSection(prompt("Section ID to update: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        System.out.println("Current: " + describeSection(section));
+                        academicService.assignRoom(section, promptSchedule());
+                        System.out.println("Updated: " + describeSection(section));
+                        break;
+                    }
+                    case "7": {
+                        Section section = searchSection(prompt("Section ID: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        System.out.println("Current capacity: " + section.getCapacity()
+                                + " (" + section.getEnrollments().size() + " enrolled)");
+                        int capacity = promptInt("New capacity (1-500): ", 1, 500);
+                        if (capacity < section.getEnrollments().size()) {
+                            System.out.println("Capacity can't be below the " + section.getEnrollments().size()
+                                    + " students already enrolled.");
+                            break;
                         }
+                        academicService.setCapacity(section, capacity);
+                        System.out.println("Updated: " + describeSection(section));
+                        break;
                     }
-                } else if (choice.equals("7")) {
+                    case "8": {
+                        Section section = searchSection(prompt("Section ID: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        academicService.assignRoom(section.getSectionId(), prompt("Room: "));
+                        System.out.println("Updated: " + describeSection(section));
+                        break;
+                    }
+                    case "9": {
+                        Section section = searchSection(prompt("Section ID: "));
+                        if (section == null) { System.out.println("Section not found."); break; }
+                        printList("Instructors:", instructorService.getAllInstructors(), "No instructors yet.");
+                        Instructor instructor = instructorService.getInstructorById(prompt("Instructor (teacher) ID: "));
+                        if (instructor == null) { System.out.println("Instructor not found."); break; }
+                        academicService.assignInstructor(section.getSectionId(), instructor);
+                        System.out.println("Updated: " + describeSection(section));
+                        break;
+                    }
+                    case "10":
+                        processRequests();
+                        break;
+                    case "11":
+                        userManagement();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
+                }
+            } catch (CampusException e) {
+                System.out.println("Could not complete: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error("Admin", "Unexpected error in Admin menu: " + e);
+            }
+        }
+    }
+
+    // --- Admin menu helpers ---
+
+    private String describeSection(Section section) {
+        String when = section.getSchedule() != null ? section.getSchedule().getScheduleInfo() : "schedule not set";
+        String instructor = section.getInstructor() != null ? section.getInstructor().getName() : "no instructor";
+        return section.getSectionId() + " | " + when + " | " + section.getEnrollments().size() + "/"
+                + section.getCapacity() + " enrolled | " + instructor;
+    }
+
+    private Day promptDay() {
+        Day[] days = Day.values();
+        for (int i = 0; i < days.length; i++) {
+            System.out.println("  " + (i + 1) + ". " + days[i]);
+        }
+        return days[promptInt("Day: ", 1, days.length) - 1];
+    }
+
+    private java.time.LocalTime promptTime(String label) {
+        while (true) {
+            try {
+                return java.time.LocalTime.parse(prompt(label));
+            } catch (java.time.format.DateTimeParseException e) {
+                System.out.println("Please use 24-hour HH:mm, e.g. 08:00 or 14:30.");
+            }
+        }
+    }
+
+    /** Asks for day, start/end time (end after start) and room. */
+    private Schedule promptSchedule() {
+        Day day = promptDay();
+        java.time.LocalTime start = promptTime("Start time (HH:mm): ");
+        java.time.LocalTime end = promptTime("End time (HH:mm): ");
+        while (!end.isAfter(start)) {
+            System.out.println("End time must be after the start time.");
+            end = promptTime("End time (HH:mm): ");
+        }
+        String room = prompt("Room: ");
+        return new Schedule(day, start, end, room.isEmpty() ? "TBD" : room);
+    }
+
+    private void processRequests() throws CampusException {
+        List<Request> requests = studentService.getAllRequests();
+        String sort = prompt("Sort by: 1. Priority  2. Date: ");
+        if (sort.equals("2")) {
+            requests.sort(new com.fast.campus.comparator.RequestDateComparator());
+        } else {
+            requests.sort(new com.fast.campus.comparator.RequestPriorityComparator());
+        }
+        printList("Requests:", requests, "No requests submitted.");
+        String requestId = requests.isEmpty() ? "" : prompt("Request ID to approve/reject (press Enter to skip): ");
+        if (requestId.isEmpty()) return;
+        Request selected = null;
+        for (Request r : requests) {
+            if (r.getRequestId().equals(requestId)) selected = r;
+        }
+        if (selected == null) { System.out.println("Request not found."); return; }
+        String decision = prompt("1. Approve  2. Reject: ");
+        if (decision.equals("1")) {
+            academicService.approveRequest(selected);
+            if (selected instanceof CourseClashRequest) {
+                // Approving a clash request means: let the student into the requested section
+                studentService.applyApprovedClashRequest((CourseClashRequest) selected);
+                Section wanted = ((CourseClashRequest) selected).getRequestedSection();
+                System.out.println("Student enrolled in " + wanted.getSectionId() + " (clash allowed).");
+            }
+        } else if (decision.equals("2")) {
+            academicService.rejectRequest(selected);
+        } else {
+            System.out.println("Invalid choice — request left unchanged.");
+            return;
+        }
+        // AcademicOfficeService only changes the status in memory; requests.txt is saved here
+        studentService.saveRequests();
+        System.out.println("Now: " + selected);
+    }
+
+    private void userManagement() throws CampusException {
+        System.out.println(" 1. Create Student");
+        System.out.println(" 2. Create Permanent Instructor");
+        System.out.println(" 3. Create Visiting Instructor");
+        System.out.println(" 4. Promote Student to TA");
+        System.out.println(" 5. View All Students");
+        System.out.println(" 6. View All Instructors");
+        String choice = prompt("Choice: ");
+        switch (choice) {
+            case "1": {
+                String id = prompt("Person ID: ");
+                String name = prompt("Name: ");
+                String email = prompt("Email: ");
+                String phone = prompt("Phone: ");
+                String studentId = prompt("Student ID (e.g. 23L-1234): ");
+                // Through StudentService so it is validated (unique ID) and saved to students.txt
+                studentService.addStudent(new NormalStudent(id, name, email, phone, studentId));
+                System.out.println("Student created.");
+                Logger.info("Admin", "Created Student: " + studentId);
+                break;
+            }
+            case "2":
+            case "3": {
+                String id = prompt("Person ID: ");
+                String name = prompt("Name: ");
+                String email = prompt("Email: ");
+                String phone = prompt("Phone: ");
+                String teacherId = prompt("Teacher ID: ");
+                if (teacherId.isEmpty() || instructorService.getInstructorById(teacherId) != null) {
+                    System.out.println("Teacher ID is empty or already used.");
                     break;
                 }
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                Instructor instructor = choice.equals("2")
+                        ? new PermanentInstructor(id, name, email, phone, teacherId)
+                        : new VisitingInstructor(id, name, email, phone, teacherId);
+                com.fast.campus.util.CampusRegistry.instructors.add(instructor);
+                instructorService.saveInstructors();
+                System.out.println(instructor.getRole() + " created.");
+                Logger.info("Admin", "Created " + instructor.getRole() + ": " + teacherId);
+                break;
             }
+            case "4": {
+                Student student = studentService.findStudent(prompt("Student ID to promote: "));
+                if (!(student instanceof NormalStudent)) {
+                    System.out.println("Student not found or already a TA.");
+                    break;
+                }
+                Section section = searchSection(prompt("Section ID the TA will assist: "));
+                if (section == null) { System.out.println("Section not found."); break; }
+                // Keeps the student's enrollments/requests and saves the change
+                studentService.promoteToTA(student, section);
+                System.out.println("Student promoted to TA of " + section.getSectionId() + ".");
+                Logger.info("Admin", "Promoted Student to TA: " + student.getStudentId());
+                break;
+            }
+            case "5":
+                printList("Students:", studentService.getStudents(), "No students yet.");
+                break;
+            case "6":
+                printList("Instructors:", instructorService.getAllInstructors(), "No instructors yet.");
+                break;
+            default:
+                System.out.println("Invalid choice.");
         }
     }
 
     // --- STUDENT MENU ---
     private void studentMenu() {
-        System.out.print("Enter your Student ID: ");
-        Student student = studentService.findStudent(scanner.nextLine());
+        Student student = studentService.findStudent(prompt("Enter your Student ID: "));
         if (student == null) { System.out.println("Student not found!"); return; }
 
         Logger.info(student.getStudentId(), "Logged in to Student menu");
@@ -318,9 +445,22 @@ public class ConsoleUI {
                         printList("Registered courses:", student.viewCourses(), "None yet.");
                         System.out.println("Total credit hours: " + student.calculateTotalCreditHours());
                         break;
-                    case "5":
-                        printList("Timetable:", studentService.viewTimetable(student), "No classes scheduled.");
+                    case "5": {
+                        List<Schedule> timetable = studentService.viewTimetable(student); // sorted by day/time
+                        System.out.println("\nTimetable:");
+                        if (timetable.isEmpty()) System.out.println("  No classes scheduled.");
+                        for (Schedule slot : timetable) {
+                            for (Section section : student.getEnrolledSections()) {
+                                if (section.getSchedule() == slot) {
+                                    String course = section.getCourse() != null
+                                            ? section.getCourse().getCourseCode() + " " + section.getCourse().getTitle() : "";
+                                    System.out.println("  " + slot.getScheduleInfo() + " — " + course
+                                            + " (" + section.getSectionId() + ")");
+                                }
+                            }
+                        }
                         break;
+                    }
                     case "6":
                         printList("Your assignments (earliest deadline first):",
                                 studentService.viewAssignments(student), "No assignments for your sections.");
@@ -331,8 +471,9 @@ public class ConsoleUI {
                         if (mine.isEmpty()) break;
                         Assignment assignment = studentService.findAssignment(prompt("Assignment ID to submit: "));
                         if (assignment == null) { System.out.println("Assignment not found."); break; }
-                        if (assignment.isDeadlinePassed()) {
-                            System.out.println("Note: the deadline has passed — this will be recorded as LATE.");
+                        if (assignment.isDeadlinePassed() && !assignment.isClosed()) {
+                            System.out.println("Note: the deadline has passed — this will be recorded as LATE"
+                                    + " (accepted until " + assignment.getDeadline().plusDays(Assignment.LATE_GRACE_DAYS) + ").");
                         }
                         Submission submission = studentService.submitAssignment(student, assignment,
                                 prompt("Your submission (text or link): "));
@@ -400,8 +541,7 @@ public class ConsoleUI {
 
     // --- TA MENU ---
     private void taMenu() {
-        System.out.print("Enter your TA Student ID: ");
-        Student s = studentService.findStudent(scanner.nextLine());
+        Student s = studentService.findStudent(prompt("Enter your TA Student ID: "));
         if (!(s instanceof TeachingAssistant)) { System.out.println("You are not a TA!"); return; }
         TeachingAssistant ta = (TeachingAssistant) s;
 
@@ -545,175 +685,339 @@ public class ConsoleUI {
         return null;
     }
 
-    // --- PERMANENT INSTRUCTOR MENU ---
+    // --- INSTRUCTOR MENUS ---
+    // Visiting and Permanent instructors share the teaching options; only Permanent
+    // instructors may assign TAs and supervise FYP (as the assignment specifies).
+
     private void permanentInstructorMenu() {
-        System.out.print("Enter your Instructor ID: ");
-        Instructor inst = instructorService.getInstructorById(scanner.nextLine());
+        Instructor inst = instructorService.getInstructorById(prompt("Enter your Instructor ID: "));
         if (!(inst instanceof PermanentInstructor)) { System.out.println("Not a Permanent Instructor!"); return; }
-        PermanentInstructor pInst = (PermanentInstructor) inst;
+        instructorMenu(inst);
+    }
 
-        Logger.info(pInst.getTeacherId(), "Logged in to Permanent Instructor menu");
+    private void visitingInstructorMenu() {
+        Instructor inst = instructorService.getInstructorById(prompt("Enter your Instructor ID: "));
+        if (!(inst instanceof VisitingInstructor)) { System.out.println("Not a Visiting Instructor!"); return; }
+        instructorMenu(inst);
+    }
+
+    private void instructorMenu(Instructor inst) {
+        boolean permanent = inst instanceof PermanentInstructor;
+        Logger.info(inst.getTeacherId(), "Logged in to " + inst.getRole() + " menu");
         while (true) {
-            System.out.println("\n--- Permanent Instructor Menu (" + pInst.getName() + ") ---");
-            System.out.println("1. View Assigned Sections & Enrolled Students");
-            System.out.println("2. Mark/Update Attendance");
-            System.out.println("3. Assign TA to Section");
-            System.out.println("4. Supervise FYP (View/Eval/Schedule)");
-            System.out.println("5. Back to Main Menu");
-            System.out.print("Enter choice: ");
+            System.out.println("\n--- " + inst.getRole() + " Menu (" + inst.getName() + ", " + inst.getTeacherId() + ") ---");
+            System.out.println(" 1. View Assigned Courses");
+            System.out.println(" 2. View Assigned Sections");
+            System.out.println(" 3. View Enrolled Students");
+            System.out.println(" 4. Mark Attendance (Present / Absent / Late)");
+            System.out.println(" 5. Update Attendance");
+            System.out.println(" 6. Calculate Attendance Percentage");
+            if (permanent) {
+                System.out.println(" 7. Assign Teaching Assistant");
+                System.out.println(" 8. FYP Supervision");
+            }
+            System.out.println(" 0. Back to Main Menu");
 
-            String choice = scanner.nextLine();
+            String choice = prompt("Enter choice: ");
             try {
-                if (choice.equals("1")) {
-                    instructorService.viewAssignedSections(pInst).forEach(sec -> {
-                        System.out.println("Section: " + sec.getSectionId());
-                        instructorService.viewEnrolledStudents(pInst, sec).forEach(st -> System.out.println("  - " + st.getName()));
-                    });
-                } else if (choice.equals("2")) {
-                    System.out.print("Enter Section ID: "); Section sec = searchSection(scanner.nextLine());
-                    System.out.print("Enter Student ID: "); Student st = studentService.findStudent(scanner.nextLine());
-                    if (sec != null && st != null) {
-                        System.out.print("Status (PRESENT/ABSENT/LATE): ");
-                        AttendanceStatus status = AttendanceStatus.valueOf(scanner.nextLine().toUpperCase());
-                        instructorService.markAttendance(pInst, st, sec, status);
-                        System.out.println("Attendance marked.");
+                switch (choice) {
+                    case "1":
+                        printList("Your courses:", instructorService.viewAssignedCourses(inst), "No courses assigned.");
+                        break;
+                    case "2": {
+                        System.out.println("\nYour sections:");
+                        List<Section> sections = instructorService.viewAssignedSections(inst);
+                        if (sections.isEmpty()) System.out.println("  No sections assigned.");
+                        for (Section section : sections) System.out.println("  " + describeSection(section));
+                        break;
                     }
-                } else if (choice.equals("3")) {
-                    System.out.print("Enter Student ID to promote to TA: ");
-                    Student st = studentService.findStudent(scanner.nextLine());
-                    System.out.print("Enter Section ID: ");
-                    Section sec = searchSection(scanner.nextLine());
-                    if (st instanceof NormalStudent && sec != null) {
-                        instructorService.assignTA(pInst, (NormalStudent) st, sec); // permission check + audit record
-                        studentService.promoteToTA(st, sec); // replace the student with the TA in the registry and save
-                        System.out.println("TA Assigned successfully.");
-                    } else {
-                        System.out.println("Invalid student type or section not found.");
+                    case "3": {
+                        Section section = chooseOwnSection(inst);
+                        if (section == null) break;
+                        List<Student> students = new java.util.ArrayList<>(instructorService.viewEnrolledStudents(inst, section));
+                        students.sort(new com.fast.campus.comparator.StudentNameComparator());
+                        printList("Students in " + section.getSectionId() + " (by name):", students, "No students enrolled.");
+                        break;
                     }
-                } else if (choice.equals("4")) {
-                    fypMenu(pInst);
-                } else if (choice.equals("5")) {
-                    break;
+                    case "4": {
+                        Section section = chooseOwnSection(inst);
+                        if (section == null) break;
+                        List<Student> students = instructorService.viewEnrolledStudents(inst, section);
+                        if (students.isEmpty()) { System.out.println("No students enrolled."); break; }
+                        System.out.println("For each student type P (present), A (absent), L (late) or press Enter to skip.");
+                        int marked = 0;
+                        for (Student student : students) {
+                            AttendanceStatus status = promptAttendanceStatus("  " + student.getName()
+                                    + " (" + student.getStudentId() + "): ", true);
+                            if (status == null) continue;
+                            try {
+                                instructorService.markAttendance(inst, student, section, status);
+                                marked++;
+                            } catch (CampusException e) {
+                                System.out.println("    Not marked: " + e.getMessage());
+                            }
+                        }
+                        System.out.println("Marked " + marked + " student(s) for today.");
+                        break;
+                    }
+                    case "5": {
+                        Section section = chooseOwnSection(inst);
+                        if (section == null) break;
+                        Student student = studentService.findStudent(prompt("Student ID: "));
+                        if (student == null) { System.out.println("Student not found."); break; }
+                        List<Attendance> records = instructorService.getAttendanceRecords(student, section);
+                        if (records.isEmpty()) { System.out.println("No attendance recorded for this student yet."); break; }
+                        for (int i = 0; i < records.size(); i++) {
+                            System.out.println("  " + (i + 1) + ". " + records.get(i).getDate() + " — " + records.get(i).getStatus());
+                        }
+                        Attendance record = records.get(promptInt("Which record: ", 1, records.size()) - 1);
+                        AttendanceStatus status = promptAttendanceStatus("New status (P / A / L): ", false);
+                        instructorService.updateAttendance(inst, record, status);
+                        System.out.println("Updated: " + record);
+                        break;
+                    }
+                    case "6": {
+                        Section section = chooseOwnSection(inst);
+                        if (section == null) break;
+                        List<Student> students = new java.util.ArrayList<>(instructorService.viewEnrolledStudents(inst, section));
+                        students.sort(new com.fast.campus.comparator.StudentNameComparator());
+                        if (students.isEmpty()) { System.out.println("No students enrolled."); break; }
+                        System.out.println("\nAttendance in " + section.getSectionId() + ":");
+                        for (Student student : students) {
+                            System.out.printf("  %-20s %s  %5.1f%%%n", student.getName(), student.getStudentId(),
+                                    instructorService.calculateAttendancePercentage(student, section));
+                        }
+                        break;
+                    }
+                    case "7":
+                        if (!permanent) { System.out.println("Invalid choice."); break; }
+                        assignTeachingAssistant((PermanentInstructor) inst);
+                        break;
+                    case "8":
+                        if (!permanent) { System.out.println("Invalid choice."); break; }
+                        fypMenu((PermanentInstructor) inst);
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
                 }
             } catch (CampusException e) {
-                System.out.println("Campus Error: " + e.getMessage());
+                System.out.println("Could not complete: " + e.getMessage());
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error(inst.getTeacherId(), "Unexpected error in instructor menu: " + e);
             }
         }
     }
 
-    // --- VISITING INSTRUCTOR MENU ---
-    private void visitingInstructorMenu() {
-        System.out.print("Enter your Instructor ID: ");
-        Instructor inst = instructorService.getInstructorById(scanner.nextLine());
-        if (!(inst instanceof VisitingInstructor)) { System.out.println("Not a Visiting Instructor!"); return; }
-        VisitingInstructor vInst = (VisitingInstructor) inst;
+    // --- Instructor menu helpers ---
 
-        Logger.info(vInst.getTeacherId(), "Logged in to Visiting Instructor menu");
+    /** Lists the instructor's sections and asks for one of them; null if none/not theirs. */
+    private Section chooseOwnSection(Instructor inst) {
+        List<Section> sections = instructorService.viewAssignedSections(inst);
+        if (sections.isEmpty()) {
+            System.out.println("You have no assigned sections — ask the Academic Office Admin to assign you.");
+            return null;
+        }
+        System.out.println("Your sections:");
+        for (Section section : sections) System.out.println("  " + describeSection(section));
+        Section section = searchSection(prompt("Section ID: "));
+        if (section == null || !sections.contains(section)) {
+            System.out.println("That is not one of your sections.");
+            return null;
+        }
+        return section;
+    }
+
+    /** P/A/L (case-insensitive); with allowSkip, an empty answer returns null. */
+    private AttendanceStatus promptAttendanceStatus(String label, boolean allowSkip) {
         while (true) {
-            System.out.println("\n--- Visiting Instructor Menu (" + vInst.getName() + ") ---");
-            System.out.println("1. View Assigned Sections & Enrolled Students");
-            System.out.println("2. Mark/Update Attendance");
-            System.out.println("3. Back to Main Menu");
-            System.out.print("Enter choice: ");
-
-            String choice = scanner.nextLine();
-            try {
-                if (choice.equals("1")) {
-                    instructorService.viewAssignedSections(vInst).forEach(sec -> {
-                        System.out.println("Section: " + sec.getSectionId());
-                        instructorService.viewEnrolledStudents(vInst, sec).forEach(st -> System.out.println("  - " + st.getName()));
-                    });
-                } else if (choice.equals("2")) {
-                    System.out.print("Enter Section ID: "); Section sec = searchSection(scanner.nextLine());
-                    System.out.print("Enter Student ID: "); Student st = studentService.findStudent(scanner.nextLine());
-                    if (sec != null && st != null) {
-                        System.out.print("Status (PRESENT/ABSENT/LATE): ");
-                        AttendanceStatus status = AttendanceStatus.valueOf(scanner.nextLine().toUpperCase());
-                        instructorService.markAttendance(vInst, st, sec, status);
-                        System.out.println("Attendance marked.");
-                    }
-                } else if (choice.equals("3")) {
-                    break;
-                }
-            } catch (CampusException e) {
-                System.out.println("Campus Error: " + e.getMessage());
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+            String answer = prompt(label).toUpperCase();
+            if (answer.isEmpty() && allowSkip) return null;
+            switch (answer) {
+                case "P": case "PRESENT": return AttendanceStatus.PRESENT;
+                case "A": case "ABSENT":  return AttendanceStatus.ABSENT;
+                case "L": case "LATE":    return AttendanceStatus.LATE;
+                default: System.out.println("    Please type P, A or L" + (allowSkip ? " (or Enter to skip)." : "."));
             }
         }
+    }
+
+    private void assignTeachingAssistant(PermanentInstructor pInst) throws CampusException {
+        Section section = chooseOwnSection(pInst);
+        if (section == null) return;
+        Student student = studentService.findStudent(prompt("Student ID to make TA: "));
+        if (!(student instanceof NormalStudent)) {
+            System.out.println("Student not found or already a TA.");
+            return;
+        }
+        studentService.checkCanPromoteToTA(student, section); // validate before anything changes
+        instructorService.assignTA(pInst, (NormalStudent) student, section); // permission check + log
+        studentService.promoteToTA(student, section); // replace the student with the TA in the registry and save
+        System.out.println(student.getName() + " is now the TA of " + section.getSectionId() + ".");
     }
 
     // --- FYP SUPERVISION MENU ---
     private void fypMenu(PermanentInstructor pInst) {
-    while (true) {
-        System.out.println("\n--- FYP Supervision Menu ---");
-        System.out.println("1. View Supervised FYP Groups");
-        System.out.println("2. View FYP Group Details");
-        System.out.println("3. Schedule FYP Meeting");
-        System.out.println("4. Evaluate FYP Idea");
-        System.out.println("5. Provide FYP Feedback");
-        System.out.println("6. Back");
-        System.out.print("Enter choice: ");
+        while (true) {
+            System.out.println("\n--- FYP Supervision Menu (" + pInst.getName() + ") ---");
+            System.out.println(" 1. View Supervised FYP Groups");
+            System.out.println(" 2. View FYP Group Details & Members");
+            System.out.println(" 3. Add Member to Group");
+            System.out.println(" 4. Remove Member from Group");
+            System.out.println(" 5. Schedule FYP Meeting");
+            System.out.println(" 6. Update Meeting Notes");
+            System.out.println(" 7. Evaluate FYP Idea");
+            System.out.println(" 8. Provide FYP Feedback");
+            System.out.println(" 0. Back");
 
-        String choice = scanner.nextLine();
-        try {
-            if (choice.equals("1")) {
-                List<FYPGroup> groups = instructorService.getFYPGroupsBySupervisor(pInst);
-                if (groups.isEmpty()) {
-                    System.out.println("No groups under supervision");
-                } else {
-                    System.out.println("\n=== Supervised FYP Groups ===");
-                    for (FYPGroup g : groups) {
-                        System.out.println("  - " + g.getGroupId() + ": " + g.getTitle());
+            String choice = prompt("Enter choice: ");
+            try {
+                switch (choice) {
+                    case "1": {
+                        List<FYPGroup> groups = instructorService.getFYPGroupsBySupervisor(pInst);
+                        System.out.println("\nSupervised FYP groups:");
+                        if (groups.isEmpty()) System.out.println("  No groups under supervision.");
+                        for (FYPGroup g : groups) {
+                            System.out.println("  " + g.getGroupId() + ": " + g.getTitle() + " (" + g.getMembers().size() + " member(s))");
+                        }
+                        break;
                     }
+                    case "2": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        printGroupDetails(group);
+                        break;
+                    }
+                    case "3": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        Student student = studentService.findStudent(prompt("Student ID to add: "));
+                        if (student == null) { System.out.println("Student not found."); break; }
+                        instructorService.addMemberToFYPGroup(group, student);
+                        printList("Members of " + group.getGroupId() + ":", group.getMembers(), "None.");
+                        break;
+                    }
+                    case "4": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        printList("Members:", group.getMembers(), "None.");
+                        Student student = studentService.findStudent(prompt("Student ID to remove: "));
+                        if (student == null || !group.getMembers().contains(student)) {
+                            System.out.println("That student is not in this group.");
+                            break;
+                        }
+                        instructorService.removeMemberFromFYPGroup(group, student);
+                        printList("Members of " + group.getGroupId() + ":", group.getMembers(), "None.");
+                        break;
+                    }
+                    case "5": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        LocalDate date = promptDate("Meeting date (YYYY-MM-DD): ");
+                        String agenda = prompt("Agenda: ");
+                        FYPMeeting meeting = new FYPMeeting("M-" + System.currentTimeMillis(), date, agenda);
+                        instructorService.scheduleFYPMeeting(pInst, group, meeting);
+                        System.out.println("Scheduled: " + meeting.getMeetingDetails());
+                        break;
+                    }
+                    case "6": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        List<FYPMeeting> meetings = sortedMeetings(group);
+                        if (meetings.isEmpty()) { System.out.println("No meetings scheduled yet."); break; }
+                        for (int i = 0; i < meetings.size(); i++) {
+                            System.out.println("  " + (i + 1) + ". " + meetings.get(i).getMeetingDetails());
+                        }
+                        FYPMeeting meeting = meetings.get(promptInt("Which meeting: ", 1, meetings.size()) - 1);
+                        instructorService.updateFYPMeetingNotes(pInst, group, meeting, prompt("Notes: "));
+                        System.out.println("Updated: " + meeting.getMeetingDetails());
+                        break;
+                    }
+                    case "7": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        double score = promptDouble("Score (0-100): ");
+                        String feedback = prompt("Evaluation feedback: ");
+                        FYPEvaluation evaluation = new FYPEvaluation("E-" + System.currentTimeMillis(), pInst);
+                        instructorService.evaluateFYPIdea(pInst, group, evaluation, score, feedback);
+                        System.out.println("Evaluated: score " + evaluation.getScore() + ", feedback: " + evaluation.getFeedback());
+                        break;
+                    }
+                    case "8": {
+                        FYPGroup group = chooseOwnGroup(pInst);
+                        if (group == null) break;
+                        List<FYPEvaluation> evaluations = group.getEvaluations();
+                        if (evaluations.isEmpty()) {
+                            System.out.println("No evaluations yet — evaluate the idea first (option 7).");
+                            break;
+                        }
+                        for (int i = 0; i < evaluations.size(); i++) {
+                            FYPEvaluation e = evaluations.get(i);
+                            System.out.println("  " + (i + 1) + ". " + e.getEvaluationDate() + " — score " + e.getScore()
+                                    + (e.getFeedback() != null ? " — " + e.getFeedback() : ""));
+                        }
+                        FYPEvaluation evaluation = evaluations.get(promptInt("Which evaluation: ", 1, evaluations.size()) - 1);
+                        instructorService.provideFYPFeedback(pInst, group, evaluation, prompt("Feedback: "));
+                        System.out.println("Feedback saved: " + evaluation.getFeedback());
+                        break;
+                    }
+                    case "0":
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
                 }
-            } else if (choice.equals("2")) {
-                System.out.print("Enter FYP Group ID: ");
-                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
-                if (group != null) {
-                    System.out.println("Title: " + group.getTitle());
-                    System.out.println("Members: " + group.getMembers().size());
-                    System.out.println("Meetings: " + group.getMeetings().size());
-                }
-            } else if (choice.equals("3")) {
-                System.out.print("Enter FYP Group ID: ");
-                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
-                if (group != null) {
-                    LocalDate date = promptDate("Meeting Date");
-                    System.out.print("Agenda: ");
-                    String agenda = scanner.nextLine();
-                    FYPMeeting meeting = new FYPMeeting("M" + System.currentTimeMillis(), date, agenda);
-                    instructorService.scheduleFYPMeeting(pInst, group, meeting);
-                    System.out.println("Meeting scheduled.");
-                }
-            } else if (choice.equals("4")) {
-                System.out.print("Enter FYP Group ID: ");
-                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
-                if (group != null) {
-                    System.out.print("Score (0-100): ");
-                    double score = Double.parseDouble(scanner.nextLine());
-                    System.out.print("Evaluation feedback: ");
-                    String feedback = scanner.nextLine();
-                    FYPEvaluation eval = new FYPEvaluation("E" + System.currentTimeMillis());
-                    instructorService.evaluateFYPIdea(pInst, group, eval, score, feedback);
-                    System.out.println("Idea evaluated.");
-                }
-            } else if (choice.equals("5")) {
-                System.out.print("Enter FYP Group ID: ");
-                FYPGroup group = pInst.viewFYPGroupDetails(scanner.nextLine());
-                if (group != null) {
-                    System.out.print("Feedback: ");
-                    instructorService.provideFYPFeedback(pInst, group, scanner.nextLine());
-                    System.out.println("Feedback provided.");
-                }
-            } else if (choice.equals("6")) {
-                break;
+            } catch (CampusException e) {
+                System.out.println("Could not complete: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Unexpected error: " + e.getMessage());
+                Logger.error(pInst.getTeacherId(), "Unexpected error in FYP menu: " + e);
             }
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
         }
     }
-}
+
+    // --- FYP menu helpers ---
+
+    /** Lists the supervisor's groups and asks for one; null if none/not theirs. */
+    private FYPGroup chooseOwnGroup(PermanentInstructor pInst) {
+        List<FYPGroup> groups = instructorService.getFYPGroupsBySupervisor(pInst);
+        if (groups.isEmpty()) { System.out.println("No groups under supervision."); return null; }
+        for (FYPGroup g : groups) System.out.println("  " + g.getGroupId() + ": " + g.getTitle());
+        FYPGroup group = instructorService.getFYPGroupById(prompt("FYP Group ID: "));
+        if (group == null || !groups.contains(group)) {
+            System.out.println("That is not one of your groups.");
+            return null;
+        }
+        return group;
+    }
+
+    private List<FYPMeeting> sortedMeetings(FYPGroup group) {
+        List<FYPMeeting> meetings = new java.util.ArrayList<>(group.getMeetings());
+        meetings.sort(new com.fast.campus.comparator.FYPMeetingDateComparator());
+        return meetings;
+    }
+
+    private void printGroupDetails(FYPGroup group) {
+        System.out.println("\n" + group.getGroupId() + ": " + group.getTitle());
+        if (group.getDescription() != null && !group.getDescription().isEmpty()) {
+            System.out.println("  " + group.getDescription());
+        }
+        System.out.println("  Supervisor: " + (group.getSupervisor() != null ? group.getSupervisor().getName() : "none"));
+        System.out.println("  Members:");
+        if (group.getMembers().isEmpty()) System.out.println("    none");
+        for (Student member : group.getMembers()) {
+            System.out.println("    " + member.getName() + " (" + member.getStudentId() + ")");
+        }
+        System.out.println("  Meetings (by date):");
+        List<FYPMeeting> meetings = sortedMeetings(group);
+        if (meetings.isEmpty()) System.out.println("    none");
+        for (FYPMeeting meeting : meetings) System.out.println("    " + meeting.getMeetingDetails());
+        System.out.println("  Evaluations:");
+        if (group.getEvaluations().isEmpty()) System.out.println("    none");
+        for (FYPEvaluation evaluation : group.getEvaluations()) {
+            System.out.println("    " + evaluation.getEvaluationDate() + " — score " + evaluation.getScore()
+                    + (evaluation.getFeedback() != null ? " — " + evaluation.getFeedback() : ""));
+        }
+    }
 }

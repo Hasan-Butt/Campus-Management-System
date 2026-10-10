@@ -1,10 +1,10 @@
 package com.fast.campus.exception;
 
 /**
- * Root exception for all campus management system errors.
+ * Abstract root exception (UML) for all campus management system errors.
  * All custom exceptions extend this class.
  */
-public class CampusException extends Exception {
+public abstract class CampusException extends Exception {
 
     public CampusException(String message) {
         super(message);

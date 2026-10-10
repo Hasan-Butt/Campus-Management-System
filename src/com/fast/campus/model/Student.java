@@ -1,8 +1,11 @@
 package com.fast.campus.model;
 
 import com.fast.campus.exception.AssessmentException;
+import com.fast.campus.exception.InvalidAssessmentException;
 import com.fast.campus.exception.CourseException;
+import com.fast.campus.exception.InvalidCourseOperationException;
 import com.fast.campus.exception.InvalidRequestException;
+import com.fast.campus.exception.SubmissionDeadlineException;
 import com.fast.campus.exception.UnauthorizedActionException;
 
 import java.util.ArrayList;
@@ -40,13 +43,13 @@ public abstract class Student extends Person {
 
     public void register(Section section) throws CourseException {
         if (section == null) {
-            throw new CourseException("Section cannot be empty");
+            throw new InvalidCourseOperationException("Section cannot be empty");
         }
         if (enrolledSections.contains(section)) {
-            throw new CourseException("Already registered in section " + section.getSectionId());
+            throw new InvalidCourseOperationException("Already registered in section " + section.getSectionId());
         }
         if (section.getCourse() != null && registeredCourses.contains(section.getCourse())) {
-            throw new CourseException("Already registered for course " + section.getCourse().getCourseCode());
+            throw new InvalidCourseOperationException("Already registered for course " + section.getCourse().getCourseCode());
         }
         section.enroll(this); // checks capacity and timetable clash, then links student <-> section
         calculateTotalCreditHours();
@@ -54,7 +57,7 @@ public abstract class Student extends Person {
 
     public void drop(Section section) throws CourseException {
         if (section == null || !enrolledSections.contains(section)) {
-            throw new CourseException("Not registered in this section");
+            throw new InvalidCourseOperationException("Not registered in this section");
         }
         section.drop(this); // cancels the enrollment and unlinks the section
         registeredCourses.remove(section.getCourse());
@@ -92,11 +95,19 @@ public abstract class Student extends Person {
         if (assignment == null || !enrolledSections.contains(assignment.getSection())) {
             throw new UnauthorizedActionException(getName(), "submit an assignment of a section they are not enrolled in");
         }
-        if (content == null || content.isBlank()) {
-            throw new AssessmentException("Submission content cannot be empty");
+        if (content == null || content.trim().isEmpty()) {
+            throw new InvalidAssessmentException("Submission content cannot be empty");
+        }
+        for (Submission existing : assignment.getSubmissions()) {
+            if (existing.getStudent().getStudentId().equals(studentId)) {
+                throw new InvalidAssessmentException("You have already submitted " + assignment.getTitle());
+            }
+        }
+        if (assignment.isClosed()) { // past the deadline + grace period
+            throw new SubmissionDeadlineException(assignment.getTitle());
         }
         Submission submission = new Submission("S-" + System.currentTimeMillis(), assignment, this, content);
-        submission.submit(); // SUBMITTED, or LATE if after the deadline (late work is accepted)
+        submission.submit(); // SUBMITTED, or LATE if within the grace period after the deadline
         assignment.addSubmission(submission);
         return submission;
     }
@@ -113,6 +124,9 @@ public abstract class Student extends Person {
         if (!enrolledSections.contains(current)) {
             throw new InvalidRequestException("Not registered in section " + current.getSectionId());
         }
+        if (wanted == current) {
+            throw new InvalidRequestException("Choose two different sections");
+        }
         if (!wanted.hasClash(current)) { // "Check Section Clash" use case
             throw new InvalidRequestException("Sections " + current.getSectionId() + " and "
                     + wanted.getSectionId() + " do not clash, so no request is needed");
@@ -125,7 +139,7 @@ public abstract class Student extends Person {
         if (request == null || request.getCategory() == null) {
             throw new InvalidRequestException("Request must have a category");
         }
-        if (request.getDescription() == null || request.getDescription().isBlank()) {
+        if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
             throw new InvalidRequestException("Request description cannot be empty");
         }
         request.submit();
@@ -143,4 +157,9 @@ public abstract class Student extends Person {
     public List<Enrollment> getEnrollments()        { return enrollments; }
     public List<Section> getEnrolledSections()      { return enrolledSections; }
     public List<Course> getRegisteredCourses()      { return registeredCourses; }
+
+    @Override
+    public String toString() {
+        return getRole() + " [" + studentId + ", " + getName() + "]";
+    }
 }
